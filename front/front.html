@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EMG + BlazePose</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+  <h1>Monitoramento EMG + BlazePose</h1>
+  <button onclick="start()">Iniciar</button>
+  <button onclick="stop()">Parar</button>
+
+  <h2>Gráfico EMG</h2>
+  <div id="plot" style="width:600px;height:400px;"></div>
+
+  <h2>Vídeo BlazePose</h2>
+  <img id="video" src="http://127.0.0.1:8000/video_feed" width="640" />
+
+  <script>
+    let intervalId = null;
+
+    function start() {
+      fetch("http://127.0.0.1:8000/start", {method: "POST"});
+      intervalId = setInterval(loadData, 1000);
+    }
+
+    function stop() {
+      fetch("http://127.0.0.1:8000/stop", {method: "POST"});
+      if (intervalId) clearInterval(intervalId);
+    }
+
+    async function loadData() {
+      let response = await fetch("http://127.0.0.1:8000/data");
+      if (response.ok) {
+        let text = await response.text();
+        let rows = text.trim().split("\n").map(r => r.split(","));
+        let x = rows.map(r => parseFloat(r[0]));
+        let y = rows.map(r => parseFloat(r[1]));
+        Plotly.newPlot('plot', [{x:x, y:y, type:'scatter'}]);
+      }
+    }
+  </script>
+</body>
+</html>
