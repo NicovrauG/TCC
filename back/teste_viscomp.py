@@ -3,7 +3,7 @@ import mediapipe as mp
 import numpy as np
 import time
 
-tempo_execucao = 20
+tempo_execucao = 10
 
 
 # Inicializa o MediaPipe
@@ -25,7 +25,7 @@ fourcc = cv2.VideoWriter_fourcc(*'mp4v')   # Codec MP4
 fps = 20.0
 frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
-out = cv2.VideoWriter('dados_e_videos/video.mp4', fourcc, fps, (frame_width, frame_height))
+out = cv2.VideoWriter('../dados_e_videos/video.mp4', fourcc, fps, (frame_width, frame_height))
 
 inicio = time.time()
 
