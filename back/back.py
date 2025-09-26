@@ -1,63 +1,131 @@
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Response, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
+import psycopg2
 import subprocess
-import os
-import cv2
+from datetime import datetime
 
 app = FastAPI()
 
-# Permitir acesso do frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # em produção, restringir
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-DATA_FILE = "backend/dados.csv"
-PROC_EMG = None
-PROC_BLAZEPOSE = None
 
+CORRIGIR: ESTÁ RODANDO UM ARQUIVO DE CADA VEZ, TEM QUE SER OS DOIS AO MESMO TEMPO, FORA ISSO
+DEU ERRO EM  INFO:     127.0.0.1:54020 - "POST /start HTTP/1.1" 500 Internal Server Error
+
+
+
+
+# Caminhos base (diretório onde este arquivo back.py está)
+BASE_DIR = Path(__file__).resolve().parent
+FRONT_DIR = BASE_DIR.parent / "front"
+
+# serve arquivos estáticos em /static
+app.mount("/static", StaticFiles(directory=str(FRONT_DIR), html=True), name="static")
+
+# rota raiz e /index.html que devolvem o index da pasta front
+@app.get("/")
+def root_index():
+    return FileResponse(FRONT_DIR / "index.html")
+
+@app.get("/index.html")
+def index_html():
+    return FileResponse(FRONT_DIR / "index.html")
+
+
+# Configuração do banco
+DB_CONFIG = {
+    "dbname": "nicolas",
+    "user": "nicolas",
+    "password": "1921",
+    "host": "localhost",
+    "port": "5432"
+}
+
+# Executa scripts externos (usa caminhos absolutos)
+def run_scripts():
+    try:
+        server_dir = BASE_DIR  # ajuste se os scripts estiverem em outra pasta
+        script1 = server_dir / "Server_coletor.py"
+        script2 = server_dir / "teste_viscomp.py"
+
+        # executa e captura saída (rodar no diretório dos scripts)
+        emg_out = subprocess.run(
+            ["python", str(script1)],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=str(server_dir),
+        )
+        subprocess.run(["python", str(script2)], check=True, cwd=str(server_dir))
+
+        # supondo que Server_coletor grava dados.csv e video.mp4 no mesmo dir
+        emg_file_path = server_dir / "dados.csv"
+        video_file_path = server_dir / "video.mp4"
+
+        if not emg_file_path.exists() or not video_file_path.exists():
+            raise FileNotFoundError("dados.csv ou video.mp4 não gerados pelos scripts")
+
+        with open(emg_file_path, "rb") as f:
+            csv_data = f.read()
+
+        with open(video_file_path, "rb") as f:
+            video_data = f.read()
+
+        return csv_data, video_data
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Erro ao rodar scripts: {e.stderr}") from e
+    except Exception as e:
+        raise
+
+# Endpoint para iniciar coleta
 @app.post("/start")
-def start_scripts():
-    global PROC_EMG, PROC_BLAZEPOSE
-    # dispara o script de coleta EMG
-    PROC_EMG = subprocess.Popen(["python", "backend/coleta_serial.py"])
-    # dispara o script do BlazePose
-    PROC_BLAZEPOSE = subprocess.Popen(["python", "backend/blazepose.py"])
-    return {"status": "started"}
+def start_coleta(usuario: str = "teste_voluntario", idade: int = 22):
+    try:
+        csv_data, video_data = run_scripts()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar arquivos: {e}")
 
-@app.post("/stop")
-def stop_scripts():
-    global PROC_EMG, PROC_BLAZEPOSE
-    if PROC_EMG: PROC_EMG.terminate()
-    if PROC_BLAZEPOSE: PROC_BLAZEPOSE.terminate()
-    return {"status": "stopped"}
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
 
-@app.get("/data")
-def get_data():
-    """Retorna o CSV mais recente do EMG"""
-    if os.path.exists(DATA_FILE):
-        return FileResponse(DATA_FILE, media_type="text/csv")
-    return {"error": "file not found"}
+    cur.execute("""
+        INSERT INTO coleta (usuario, idade, data_coleta, arquivo_csv, video_mp4)
+        VALUES (%s, %s, %s, %s, %s) RETURNING id
+    """, (usuario, idade, datetime.now(), psycopg2.Binary(csv_data), psycopg2.Binary(video_data)))
 
-@app.get("/video_feed")
-def video_feed():
-    """Stream de vídeo do BlazePose (webcam ou arquivo processado)"""
-    cap = cv2.VideoCapture(0)  # substitua por saída do seu blazepose.py
+    coleta_id = cur.fetchone()[0]
 
-    def generate():
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            # converte frame para JPEG
-            _, buffer = cv2.imencode('.jpg', frame)
-            frame_bytes = buffer.tobytes()
-            yield (
-                b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n'
-            )
-    return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {"message": "Coleta armazenada com sucesso", "id": coleta_id}
+
+# Endpoint para baixar CSV
+@app.get("/csv/{coleta_id}")
+def get_csv(coleta_id: int):
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT arquivo_csv FROM coleta WHERE id = %s", (coleta_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Coleta não encontrada")
+    csv_data = row[0]
+    return Response(content=csv_data, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=dados.csv"})
+
+# Endpoint para exibir vídeo
+@app.get("/video/{coleta_id}")
+def get_video(coleta_id: int):
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT video_mp4 FROM coleta WHERE id = %s", (coleta_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Coleta não encontrada")
+    video_data = row[0]
+    return Response(content=video_data, media_type="video/mp4")
