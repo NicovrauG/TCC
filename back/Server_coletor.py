@@ -6,9 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import butter, filtfilt
 
-import datetime
-hora_atual = datetime.datetime.now().strftime("%H:%M:%S")
-
 BROKER = "192.168.238.153"
 PORT = 1883
 TOPIC_DATA = "emg/sensor1"
@@ -50,7 +47,7 @@ def on_message(client, userdata, msg):
     timestamp = time.time() - start_time
     data_buffer.append((timestamp, payload))
 
-def collect_data(duration=10, output_file=f"../dados_e_videos/emg_data{hora_atual}.csv"):
+def collect_data(duration=20, output_file=f"../dados_e_videos/emg_data.csv"):
     global data_buffer, start_time
     data_buffer = []
     start_time = time.time()
@@ -110,11 +107,13 @@ def collect_data(duration=10, output_file=f"../dados_e_videos/emg_data{hora_atua
     plt.legend(fontsize=20)
     plt.tight_layout()
     plt.tick_params(axis='both', labelsize=20) 
-    plt.show()
+    plot_file = "../dados_e_videos/emg_plot.png"
+    plt.savefig(plot_file)
+    plt.close()
+    print(plot_file)
 
-    print(output_file)
-
+    
 if __name__ == "__main__":
-    collect_data(duration=10, output_file=f"../dados_e_videos/emg_data{hora_atual}.csv")
+    collect_data(duration=10, output_file=f"../dados_e_videos/emg_data.csv")
     
     
