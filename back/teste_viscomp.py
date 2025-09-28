@@ -2,9 +2,14 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import time
+from datetime import datetime
+import subprocess
+from pathlib import Path
+import os
 
-tempo_execucao = 10
+tempo_execucao = 20
 
+timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
 # Inicializa o MediaPipe
 mp_drawing = mp.solutions.drawing_utils
@@ -17,6 +22,9 @@ def calcular_angulo(a, b, c):
     angulo = np.arccos(np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb)))
     return np.degrees(angulo)
 
+input_path = f'../dados_e_videos/video_{timestamp}.mp4'
+output_path = f'../dados_e_videos/video_{timestamp}_h264.mp4'
+
 # Captura da webcam
 cap = cv2.VideoCapture(0)
 
@@ -25,11 +33,15 @@ fourcc = cv2.VideoWriter_fourcc(*'mp4v')   # Codec MP4
 fps = 20.0
 frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
-out = cv2.VideoWriter('../dados_e_videos/video.mp4', fourcc, fps, (frame_width, frame_height))
-
-inicio = time.time()
+out = cv2.VideoWriter(input_path, fourcc, fps, (frame_width, frame_height))
 
 with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+    warmup_frames = 5
+    for _ in range(warmup_frames):
+        ret_w, frame_w = cap.read()
+        time.sleep(0.1)
+
+    inicio = time.time()
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -81,3 +93,20 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 cap.release()
 out.release()
 cv2.destroyAllWindows()
+
+try:
+    subprocess.run([
+        "ffmpeg", "-y", "-i", input_path,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        output_path
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # opcional: substituir o arquivo original pelo transcodificado para manter mesmo nome
+    out_p = Path(output_path)
+    in_p = Path(input_path)
+    if out_p.exists():
+        os.replace(str(out_p), str(in_p))
+        print(f"Transcodificação concluída e '{output_path}' movido para '{input_path}'")
+except subprocess.CalledProcessError as e:
+    print("ffmpeg falhou:", e)
