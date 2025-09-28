@@ -1,20 +1,14 @@
-from fastapi import FastAPI, Response, HTTPException
+from fastapi import FastAPI, Response, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
 import psycopg2
 import subprocess
 from datetime import datetime
+import csv
+from io import StringIO
 
 app = FastAPI()
-
-
-
-CORRIGIR: ESTÁ RODANDO UM ARQUIVO DE CADA VEZ, TEM QUE SER OS DOIS AO MESMO TEMPO, FORA ISSO
-DEU ERRO EM  INFO:     127.0.0.1:54020 - "POST /start HTTP/1.1" 500 Internal Server Error
-
-
-
 
 # Caminhos base (diretório onde este arquivo back.py está)
 BASE_DIR = Path(__file__).resolve().parent
@@ -35,7 +29,7 @@ def index_html():
 
 # Configuração do banco
 DB_CONFIG = {
-    "dbname": "nicolas",
+    "dbname": "projetoemg",
     "user": "nicolas",
     "password": "1921",
     "host": "localhost",
@@ -49,19 +43,20 @@ def run_scripts():
         script1 = server_dir / "Server_coletor.py"
         script2 = server_dir / "teste_viscomp.py"
 
-        # executa e captura saída (rodar no diretório dos scripts)
-        emg_out = subprocess.run(
-            ["python", str(script1)],
-            check=True,
-            capture_output=True,
-            text=True,
-            cwd=str(server_dir),
-        )
-        subprocess.run(["python", str(script2)], check=True, cwd=str(server_dir))
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        video_filename = f"video_{timestamp}.mp4"
+        video_file_path = server_dir.parent / "dados_e_videos" / video_filename
+
+        env = {"VIDEO_PATH": str(video_file_path)}
+        p1 = subprocess.Popen(["python", str(script1)], cwd=str(server_dir))
+        p2 = subprocess.Popen(["python", str(script2)], cwd=str(server_dir))
+
+        p1.wait()
+        p2.wait()
 
         # supondo que Server_coletor grava dados.csv e video.mp4 no mesmo dir
-        emg_file_path = server_dir / "dados.csv"
-        video_file_path = server_dir / "video.mp4"
+        emg_file_path = server_dir.parent / "dados_e_videos" / "emg_data.csv"
+        plot_file_path = server_dir.parent / "dados_e_videos" / "emg_plot.png"
 
         if not emg_file_path.exists() or not video_file_path.exists():
             raise FileNotFoundError("dados.csv ou video.mp4 não gerados pelos scripts")
@@ -69,10 +64,11 @@ def run_scripts():
         with open(emg_file_path, "rb") as f:
             csv_data = f.read()
 
-        with open(video_file_path, "rb") as f:
-            video_data = f.read()
+        with open(plot_file_path, "rb") as f:
+            plot_data = f.read()
 
-        return csv_data, video_data
+        return csv_data, plot_data, str(video_file_path)
+    
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Erro ao rodar scripts: {e.stderr}") from e
     except Exception as e:
@@ -80,9 +76,13 @@ def run_scripts():
 
 # Endpoint para iniciar coleta
 @app.post("/start")
-def start_coleta(usuario: str = "teste_voluntario", idade: int = 22):
+async def start_coleta(request: Request):
+    body = await request.json()
+    usuario = body.get("nome", "Anônimo")
+    idade = body.get("idade", 0)
+
     try:
-        csv_data, video_data = run_scripts()
+        csv_data, plot_data, video_path = run_scripts()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar arquivos: {e}")
 
@@ -90,9 +90,9 @@ def start_coleta(usuario: str = "teste_voluntario", idade: int = 22):
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO coleta (usuario, idade, data_coleta, arquivo_csv, video_mp4)
-        VALUES (%s, %s, %s, %s, %s) RETURNING id
-    """, (usuario, idade, datetime.now(), psycopg2.Binary(csv_data), psycopg2.Binary(video_data)))
+        INSERT INTO coleta (nome, idade, data_coleta, dados_emg, grafico_emg, video_path)
+        VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+    """, (usuario, idade, datetime.now(), psycopg2.Binary(csv_data), psycopg2.Binary(plot_data), video_path))
 
     coleta_id = cur.fetchone()[0]
 
@@ -102,30 +102,78 @@ def start_coleta(usuario: str = "teste_voluntario", idade: int = 22):
 
     return {"message": "Coleta armazenada com sucesso", "id": coleta_id}
 
-# Endpoint para baixar CSV
-@app.get("/csv/{coleta_id}")
-def get_csv(coleta_id: int):
+@app.get("/coletas")
+def listar_coletas():
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
-    cur.execute("SELECT arquivo_csv FROM coleta WHERE id = %s", (coleta_id,))
+    cur.execute("SELECT id, nome, idade, data_coleta FROM coleta ORDER BY data_coleta DESC")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    coletas = []
+    for row in rows:
+        coletas.append({
+            "id": row[0],
+            "nome": row[1],
+            "idade": row[2],
+            "data": row[3].strftime("%Y-%m-%d %H:%M:%S")
+        })
+    return coletas
+
+@app.get("/csv/{coleta_id}")
+def get_csv_json(coleta_id: int):
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT dados_emg FROM coleta WHERE id = %s", (coleta_id,))
     row = cur.fetchone()
     cur.close()
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Coleta não encontrada")
-    csv_data = row[0]
-    return Response(content=csv_data, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=dados.csv"})
+
+    csv_data = row[0].decode("utf-8")  # transforma bytes em string
+    f = StringIO(csv_data)
+    reader = csv.DictReader(f)
+    dados = [{"tempo": float(r["t (s)"]), "valor": float(r["emg_value"])} for r in reader]
+    return dados
+
+@app.get("/grafico/{coleta_id}")
+def get_grafico(coleta_id: int):
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT grafico_emg FROM coleta WHERE id = %s", (coleta_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Coleta não encontrada")
+    return Response(content=row[0], media_type="image/png")
 
 # Endpoint para exibir vídeo
 @app.get("/video/{coleta_id}")
 def get_video(coleta_id: int):
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
-    cur.execute("SELECT video_mp4 FROM coleta WHERE id = %s", (coleta_id,))
+    cur.execute("SELECT video_path FROM coleta WHERE id = %s", (coleta_id,))
     row = cur.fetchone()
     cur.close()
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Coleta não encontrada")
-    video_data = row[0]
-    return Response(content=video_data, media_type="video/mp4")
+
+    video_path = Path(row[0])
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Arquivo de vídeo não encontrado")
+
+    ext = video_path.suffix.lower()
+    if ext == ".mp4":
+        media_type = "video/mp4"
+    elif ext == ".webm":
+        media_type = "video/webm"
+    elif ext == ".ogg" or ext == ".ogv":
+        media_type = "video/ogg"
+    else:
+        media_type = "application/octet-stream"
+
+    return FileResponse(str(video_path), media_type=media_type)
