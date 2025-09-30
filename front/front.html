@@ -135,6 +135,45 @@
     .modal-content button:hover {
       background: #1f4d5a;
     }
+
+    .img-container {
+      overflow: auto;
+      border: 1px solid #e0e0e0;
+      background: #fff;
+      padding: 8px;
+      max-width: 100%;
+      max-height: 70vh; /* limita altura da viewport, permite rolar */
+    }
+
+    .img-container img {
+      display: block;
+      width: auto;       /* NÃO forçar largura */
+      max-width: none;   /* permitir largura real */
+      height: auto;
+      transform-origin: top left; /* zoom relativo ao canto */
+      transition: transform 0.12s ease;
+    }
+
+    .zoom-controls {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .zoom-controls button {
+      padding: 0.4rem 0.6rem;
+      background: #52ab98;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .zoom-controls a {
+      margin-left: 0.5rem;
+      color: #2b6777;
+    }
   </style>
 </head>
 <body>
@@ -196,12 +235,88 @@
         <source src="/video/${id}" type="video/mp4">
       </video>
       <h3>Sinal EMG</h3>
-      <img src="grafico/${id}" width="1080">
-      <a href="/csv/${id}" target="_blank">Baixar CSV</a><br><br>
+      <div class="img-container" id="imgContainer">
+        <img id="emgImg" src="/grafico/${id}" alt="Grafico EMG">
+      </div>
+      <div class="zoom-controls">
+        <button id="zoomOut">-</button>
+        <button id="zoomReset">Reset</button>
+        <button id="zoomIn">+</button>
+        <button id="openNewTab">Abrir em nova aba</button>
+        <button id="downloadCsv">Baixar CSV</button>
+      </div>
     `;
+      // comportamento de zoom (usa transform: scale)
+    let currentScale = 1;
+    const img = document.getElementById("emgImg");
+    function applyScale() {
+      img.style.transform = `scale(${currentScale})`;
+    }
+    document.getElementById("zoomIn").addEventListener("click", () => {
+      currentScale = Math.min(10, currentScale + 0.1);
+      applyScale();
+    });
+    document.getElementById("zoomOut").addEventListener("click", () => {
+      currentScale = Math.max(0.1, currentScale - 0.1);
+      applyScale();
+    });
+    document.getElementById("zoomReset").addEventListener("click", () => {
+      currentScale = 1;
+      applyScale();
+    });
+
+    // abrir imagem em nova aba (botão)
+    document.getElementById("openNewTab").addEventListener("click", () => {
+      window.open(`/grafico/${id}`, "_blank");
+    });
+
+    // baixar CSV (fetch -> blob -> download). mostra alerta em caso de erro
+    document.getElementById("downloadCsv").addEventListener("click", async () => {
+      try {
+        const res = await fetch(`/csv/${id}`);
+        if (!res.ok) {
+          alert("Erro ao baixar CSV: " + res.status);
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `coleta_${id}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Erro ao baixar CSV: " + err.message);
+      }
+    });
+
+    // opcional: permitir arrastar a imagem com o mouse (panning)
+    const container = document.getElementById("imgContainer");
+    let isDown = false, startX, startY, scrollLeft, scrollTop;
+    container.addEventListener("mousedown", (e) => {
+      isDown = true;
+      container.classList.add('active');
+      startX = e.pageX - container.offsetLeft;
+      startY = e.pageY - container.offsetTop;
+      scrollLeft = container.scrollLeft;
+      scrollTop = container.scrollTop;
+      e.preventDefault();
+    });
+    window.addEventListener("mouseup", () => { isDown = false; container.classList.remove('active'); });
+    container.addEventListener("mousemove", (e) => {
+      if (!isDown) return;
+      const x = e.pageX - container.offsetLeft;
+      const y = e.pageY - container.offsetTop;
+      const walkX = (x - startX);
+      const walkY = (y - startY);
+      container.scrollLeft = scrollLeft - walkX;
+      container.scrollTop = scrollTop - walkY;
+    });
     }
 
-
+    
     async function iniciarColeta() {
       const nome = document.getElementById("nome").value;
       const idade = parseInt(document.getElementById("idade").value);
@@ -231,8 +346,8 @@
       `;
       carregarColetas();
     }
-
     carregarColetas();
+
   </script>
 </body>
 </html>
