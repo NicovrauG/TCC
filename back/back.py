@@ -132,11 +132,22 @@ def get_csv_json(coleta_id: int):
     if not row:
         raise HTTPException(status_code=404, detail="Coleta não encontrada")
 
-    csv_data = row[0].decode("utf-8")  # transforma bytes em string
-    f = StringIO(csv_data)
-    reader = csv.DictReader(f)
-    dados = [{"tempo": float(r["t (s)"]), "valor": float(r["emg_value"])} for r in reader]
-    return dados
+    raw = row[0]
+    # raw pode ser bytes, memoryview ou outro tipo; garantir bytes antes de retornar/decodificar
+    if isinstance(raw, memoryview):
+        csv_bytes = raw.tobytes()
+    elif isinstance(raw, bytes):
+        csv_bytes = raw
+    else:
+        # tenta converter com bytes()
+        try:
+            csv_bytes = bytes(raw)
+        except Exception:
+            raise HTTPException(status_code=500, detail="Formato de dados no banco inesperado")
+
+    # Retorna como arquivo CSV para download (Content-Disposition)
+    return Response(content=csv_bytes, media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="coleta_{coleta_id}.csv"'})
 
 @app.get("/grafico/{coleta_id}")
 def get_grafico(coleta_id: int):
