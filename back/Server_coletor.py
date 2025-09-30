@@ -12,7 +12,7 @@ TOPIC_DATA = "emg/sensor1"
 TOPIC_CTRL = "emg/control"
 
 data_buffer = []
-
+duration = 20
 
 
 def filtro_passa_alta(dados, fs, fc, ordem=4):
@@ -47,7 +47,7 @@ def on_message(client, userdata, msg):
     timestamp = time.time() - start_time
     data_buffer.append((timestamp, payload))
 
-def collect_data(duration=20, output_file=f"../dados_e_videos/emg_data.csv"):
+def collect_data(duration, output_file=f"../dados_e_videos/emg_data.csv"):
     global data_buffer, start_time
     data_buffer = []
     start_time = time.time()
@@ -114,6 +114,6 @@ def collect_data(duration=20, output_file=f"../dados_e_videos/emg_data.csv"):
 
     
 if __name__ == "__main__":
-    collect_data(duration=10, output_file=f"../dados_e_videos/emg_data.csv")
+    collect_data(duration, output_file=f"../dados_e_videos/emg_data.csv")
     
     
