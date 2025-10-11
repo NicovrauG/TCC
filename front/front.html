@@ -4,350 +4,203 @@
   <meta charset="UTF-8">
   <title>Coletas de EMG + Vídeo</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      margin: 0;
-      padding: 0;
-      color: #333;
-    }
-
-    header {
-      background: #2b6777;
-      color: white;
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
-
-    header button {
-      background: #52ab98;
-      border: none;
-      padding: 0.6rem 1rem;
-      border-radius: 5px;
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-
-    header button:hover {
-      background: #3c8d7a;
-    }
-
-    main {
-      padding: 2rem;
-      max-width: 1110px;
-      margin: auto;
-    }
-
-    h2 {
-      margin-top: 2rem;
-      border-bottom: 2px solid #ddd;
-      padding-bottom: 0.5rem;
-      color: #2b6777;
-    }
-
-    #listaColetas {
-      list-style: none;
-      padding: 0;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1rem;
-    }
-
-    .card {
-      background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    .card button {
-      margin-top: 0.5rem;
-      background: #52ab98;
-      border: none;
-      padding: 0.4rem 0.8rem;
-      border-radius: 5px;
-      color: white;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    .card button:hover {
-      background: #3c8d7a;
-    }
-
-    #resultado {
-      margin-top: 1rem;
-      background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    /* Modal */
-    .modal {
-      display: none; 
-      position: fixed; 
-      z-index: 1000; 
-      left: 0;
-      top: 0;
-      width: 100%; 
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      justify-content: center;
-      align-items: center;
-    }
-
-    .modal-content {
-      background: white;
-      padding: 2rem;
-      border-radius: 8px;
-      width: 300px;
-      text-align: center;
-    }
-
-    .modal-content input {
-      width: 100%;
-      padding: 0.6rem;
-      margin: 0.5rem 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    .modal-content button {
-      width: 100%;
-      margin-top: 1rem;
-      padding: 0.6rem;
-      background: #2b6777;
-      border: none;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    .modal-content button:hover {
-      background: #1f4d5a;
-    }
-
-    .img-container {
-      overflow: auto;
-      border: 1px solid #e0e0e0;
-      background: #fff;
-      padding: 8px;
-      max-width: 100%;
-      max-height: 70vh; /* limita altura da viewport, permite rolar */
-    }
-
-    .img-container img {
-      display: block;
-      width: auto;       /* NÃO forçar largura */
-      max-width: none;   /* permitir largura real */
-      height: auto;
-      transform-origin: top left; /* zoom relativo ao canto */
-      transition: transform 0.12s ease;
-    }
-
-    .zoom-controls {
-      margin-top: 0.5rem;
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
-    .zoom-controls button {
-      padding: 0.4rem 0.6rem;
-      background: #52ab98;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .zoom-controls a {
-      margin-left: 0.5rem;
-      color: #2b6777;
-    }
+    body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 0; color: #333; }
+    header { background: #2b6777; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 1.5rem; }
+    main { padding: 2rem; max-width: 1920px; margin: auto; }
+    main button { background: #52ab98; border: none; padding: 0.6rem 1rem; border-radius: 5px; color: white; font-size: 1rem; cursor: pointer; }
+    main button:hover { background: #3c8d7a; }
+    h2 { margin-top: 2rem; border-bottom: 2px solid #ddd; padding-bottom: 0.5rem; color: #2b6777; }
+    #listaPacientes { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+    .card { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .card button { margin-top: 0.5rem; background: #52ab98; border: none; padding: 0.4rem 0.8rem; border-radius: 5px; color: white; cursor: pointer; font-size: 0.9rem; }
+    .card button:hover { background: #3c8d7a; }
+    #resultado { margin-top: 1rem; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); min-height: 120px; }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 320px; text-align: center; }
+    .modal-content input, .modal-content select { width: 100%; padding: 0.6rem; margin: 0.4rem 0; border: 1px solid #ccc; border-radius: 5px; }
+    .modal-content button { margin-top: 0.5rem; background: #52ab98; border: none; padding: 0.4rem 0.8rem; border-radius: 5px; color: white; cursor: pointer; font-size: 0.9rem; }
+    .modal-content button:hover { background: #3c8d7a; }
+    .img-container { overflow: auto; border: 1px solid #e0e0e0; background: #fff; padding: 8px; max-width: 100%; max-height: 70vh; }
+    .img-container img { display: block; width: auto; max-width: none; height: auto; transform-origin: top left; transition: transform 0.12s ease; }
+    .zoom-controls { margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center; }
+    .zoom-controls button { padding: 0.4rem 0.6rem; background: #52ab98; color: white; border: none; border-radius: 4px; cursor: pointer; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Coletas EMG + Vídeo</h1>
-    <button onclick="abrirModal()">+ Nova Coleta</button>
+    <h1>Perfis</h1>
   </header>
 
   <main>
-    <h2>Resultado da Coleta Atual</h2>
-    <div id="resultado">Nenhuma coleta em andamento</div>
-
-    <h2>Histórico de Coletas</h2>
-    <ul id="listaColetas"></ul>
+    <div>
+      <button onclick="abrirModalCadastro()">Cadastrar novo</button>
+    </div>
+    <h2>Registros</h2>
+    <input 
+      type="text" 
+      id="searchInput" 
+      placeholder="🔍 Buscar paciente..." 
+      oninput="filtrarPacientes()" 
+      style="padding:8px;width:100%;max-width:400px;margin-bottom:16px;border-radius:6px;border:1px solid #ccc;"
+    >
+    <ul id="listaPacientes"></ul>
   </main>
 
-  <!-- Modal para nova coleta -->
-  <div class="modal" id="modal">
+  <!-- Modal para cadastrar paciente -->
+  <div class="modal" id="modalCadastro">
     <div class="modal-content">
-      <h3>Nova Coleta</h3>
-      <input type="text" id="nome" placeholder="Nome do paciente" required>
-      <input type="number" id="idade" placeholder="Idade" required>
-      <button onclick="iniciarColeta()">Iniciar</button>
+      <h3>Novo Paciente</h3>
+      <input type="text" id="p_nome" placeholder="Nome do paciente" required>
+      <input type="number" id="p_idade" placeholder="Idade" required>
+      <input type="number" step="0.1" id="p_peso" placeholder="Peso (kg)">
+      <input type="number" step="0.01" id="p_altura" placeholder="Altura (m)">
+      <select id="p_genero">
+        <option value="">Gênero (opcional)</option>
+        <option value="M">M</option>
+        <option value="F">F</option>
+        <option value="Outro">Outro</option>
+      </select>
+      <button onclick="criarPaciente()">Cadastrar</button>
+      <button onclick="fecharModalCadastro()">Cancelar</button>
     </div>
   </div>
 
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <script>
-    function abrirModal() {
-      document.getElementById("modal").style.display = "flex";
-    }
-    function fecharModal() {
-      document.getElementById("modal").style.display = "none";
-    }
+    let pacienteSelecionado = null;
 
-    async function carregarColetas() {
-      const response = await fetch("/coletas");
-      const coletas = await response.json();
-      const lista = document.getElementById("listaColetas");
-      lista.innerHTML = "";
-      coletas.forEach(c => {
+    function abrirModalCadastro() { document.getElementById("modalCadastro").style.display = "flex"; }
+    function fecharModalCadastro() { document.getElementById("modalCadastro").style.display = "none"; }
+
+    function abrirModalColeta(paciente_id) { 
+      pacienteSelecionado = paciente_id;
+      document.getElementById("modalColeta").style.display = "flex"; 
+    }
+    function fecharModalColeta() { document.getElementById("modalColeta").style.display = "none"; }
+
+    let todosPacientes = []; // guarda a lista completa
+
+    function renderizarPacientes(lista) {
+      const container = document.getElementById("listaPacientes");
+      container.innerHTML = "";
+      if (lista.length === 0) {
+        container.innerHTML = "<li class='card'>Nenhum paciente encontrado.</li>";
+        return;
+      }
+
+      lista.forEach(p => {
         const li = document.createElement("li");
         li.classList.add("card");
         li.innerHTML = `
-          <strong>${c.nome}</strong><br>
-          ${c.idade} anos<br>
-          <small>${c.data}</small><br>
-          <button onclick="mostrarColeta(${c.id})">Ver</button>
+          <strong>${p.nome}</strong><br>
+          ${p.idade ? p.idade + " anos<br>" : ""}
+          ${p.peso ? "Peso: " + p.peso + " kg<br>" : ""}
+          ${p.altura ? "Altura: " + p.altura + " m<br>" : ""}
+          ${p.genero ? "Gênero: " + p.genero + "<br>" : ""}
+          <div style="margin-top:8px">
+            <button onclick="window.location.href='paciente.html?id=${p.id}'">Ver Perfil</button>
+          </div>
         `;
-        lista.appendChild(li);
+        container.appendChild(li);
       });
     }
 
-    async function mostrarColeta(id) {
-    // carrega vídeo
-    document.getElementById("resultado").innerHTML = `
-      <video id="videoPlayer" width="480" controls>
-        <source src="/video/${id}" type="video/mp4">
-      </video>
-      <h3>Sinal EMG</h3>
-      <div class="img-container" id="imgContainer">
-        <img id="emgImg" src="/grafico/${id}" alt="Grafico EMG">
-      </div>
-      <div class="zoom-controls">
-        <button id="zoomOut">-</button>
-        <button id="zoomReset">Reset</button>
-        <button id="zoomIn">+</button>
-        <button id="openNewTab">Abrir em nova aba</button>
-        <button id="downloadCsv">Baixar CSV</button>
-      </div>
-    `;
-      // comportamento de zoom (usa transform: scale)
-    let currentScale = 1;
-    const img = document.getElementById("emgImg");
-    function applyScale() {
-      img.style.transform = `scale(${currentScale})`;
-    }
-    document.getElementById("zoomIn").addEventListener("click", () => {
-      currentScale = Math.min(10, currentScale + 0.1);
-      applyScale();
-    });
-    document.getElementById("zoomOut").addEventListener("click", () => {
-      currentScale = Math.max(0.1, currentScale - 0.1);
-      applyScale();
-    });
-    document.getElementById("zoomReset").addEventListener("click", () => {
-      currentScale = 1;
-      applyScale();
-    });
-
-    // abrir imagem em nova aba (botão)
-    document.getElementById("openNewTab").addEventListener("click", () => {
-      window.open(`/grafico/${id}`, "_blank");
-    });
-
-    // baixar CSV (fetch -> blob -> download). mostra alerta em caso de erro
-    document.getElementById("downloadCsv").addEventListener("click", async () => {
+    // Carrega lista de pacientes
+    async function carregarPacientes() {
       try {
-        const res = await fetch(`/csv/${id}`);
-        if (!res.ok) {
-          alert("Erro ao baixar CSV: " + res.status);
-          return;
-        }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `coleta_${id}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        const res = await fetch("/pacientes");
+        if (!res.ok) throw new Error("Erro ao carregar pacientes");
+        todosPacientes = await res.json();
+        renderizarPacientes(todosPacientes);
       } catch (err) {
-        alert("Erro ao baixar CSV: " + err.message);
+        console.error(err);
+        document.getElementById("listaPacientes").innerHTML = "<li class='card'>Erro ao carregar pacientes</li>";
       }
-    });
-
-    // opcional: permitir arrastar a imagem com o mouse (panning)
-    const container = document.getElementById("imgContainer");
-    let isDown = false, startX, startY, scrollLeft, scrollTop;
-    container.addEventListener("mousedown", (e) => {
-      isDown = true;
-      container.classList.add('active');
-      startX = e.pageX - container.offsetLeft;
-      startY = e.pageY - container.offsetTop;
-      scrollLeft = container.scrollLeft;
-      scrollTop = container.scrollTop;
-      e.preventDefault();
-    });
-    window.addEventListener("mouseup", () => { isDown = false; container.classList.remove('active'); });
-    container.addEventListener("mousemove", (e) => {
-      if (!isDown) return;
-      const x = e.pageX - container.offsetLeft;
-      const y = e.pageY - container.offsetTop;
-      const walkX = (x - startX);
-      const walkY = (y - startY);
-      container.scrollLeft = scrollLeft - walkX;
-      container.scrollTop = scrollTop - walkY;
-    });
     }
 
-    
-    async function iniciarColeta() {
-      const nome = document.getElementById("nome").value;
-      const idade = parseInt(document.getElementById("idade").value);
+    function filtrarPacientes() {
+      const termo = document.getElementById("searchInput").value.toLowerCase();
+      const filtrados = todosPacientes.filter(p =>
+        p.nome.toLowerCase().includes(termo)
+      );
+      renderizarPacientes(filtrados);
+    }
+
+    function limparCamposPaciente() {
+      document.getElementById("p_nome").value = "";
+      document.getElementById("p_idade").value = "";
+      document.getElementById("p_peso").value = "";
+      document.getElementById("p_altura").value = "";
+      document.getElementById("p_genero").value = "";
+    }
+
+    // Cria paciente (POST /pacientes)
+    async function criarPaciente() {
+      const nome = document.getElementById("p_nome").value;
+      const idade = parseInt(document.getElementById("p_idade").value);
+      const peso = parseFloat(document.getElementById("p_peso").value) || null;
+      const altura = parseFloat(document.getElementById("p_altura").value) || null;
+      const genero = document.getElementById("p_genero").value || null;
 
       if (!nome || !idade) {
-        alert("Preencha todos os campos!");
+        alert("Nome e idade são obrigatórios");
         return;
       }
 
-      fecharModal();
-      document.getElementById("resultado").innerHTML = "Coletando dados...";
-
-      const response = await fetch("/start", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({nome, idade})
-      });
-
-      if (!response.ok) {
-        document.getElementById("resultado").innerText = "Erro ao iniciar coleta: " + response.status;
-        return;
+      try {
+        const res = await fetch("/pacientes", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({nome, idade, peso, altura, genero})
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error("Erro ao cadastrar paciente: " + txt);
+        }
+        const data = await res.json();
+        fecharModalCadastro();
+        limparCamposPaciente();
+        carregarPacientes();
+        mostrarPaciente(data.id);
+      } catch (err) {
+        alert(err.message);
       }
-
-      const data = await response.json();
-      document.getElementById("resultado").innerHTML = `
-        <p>✅ Coleta salva com ID: ${data.id}</p>
-      `;
-      carregarColetas();
     }
-    carregarColetas();
 
+ 
+    async function mostrarPaciente(paciente_id) {
+      const resultado = document.getElementById("resultado");
+      resultado.innerHTML = "Carregando histórico do paciente...";
+      try {
+        const res = await fetch(`/pacientes/${paciente_id}/coletas`);
+        if (!res.ok) throw new Error("Erro ao carregar coletas");
+        const coletas = await res.json();
+        if (!coletas || coletas.length === 0) {
+          resultado.innerHTML = `<p>Nenhuma coleta encontrada para este paciente.</p>
+            <p><button onclick="abrirModalColeta(${paciente_id})">Iniciar nova coleta</button></p>`;
+          return;
+        }
+
+        let html = `<h3>Coletas do paciente</h3><ul style="list-style:none;padding:0">`;
+        coletas.forEach(c => {
+          html += `<li class="card" style="margin-bottom:8px;">
+                    <strong>${c.data}</strong><br>
+                    <div style="margin-top:8px">
+                      <button onclick="mostrarColeta(${c.id})">Ver Coleta</button>
+                      <button onclick="baixarCsv(${c.id})">Baixar CSV</button>
+                    </div>
+                   </li>`;
+        });
+        html += `</ul>`;
+        resultado.innerHTML = html;
+      } catch (err) {
+        resultado.innerHTML = `<p style="color:red">Erro: ${err.message}</p>`;
+      }
+    }
+
+    carregarPacientes();
   </script>
 </body>
 </html>
