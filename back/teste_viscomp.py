@@ -5,10 +5,9 @@ import time
 from datetime import datetime
 import subprocess
 from pathlib import Path
-import os
+import os, sys
 
-tempo_execucao = 20
-
+tempo_execucao = int(sys.argv[1]) if len(sys.argv) > 1 else 10
 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
 # Inicializa o MediaPipe
