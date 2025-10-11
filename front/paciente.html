@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Paciente - Coletas EMG</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 0; color: #333; }
+    header { background: #2b6777; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 1.5rem; }
+    main button { background: #52ab98; border: none; padding: 0.6rem 1rem; border-radius: 5px; color: white; font-size: 1rem; cursor: pointer; }
+    main button:hover { background: #3c8d7a; }
+    main { padding: 2rem; max-width: 1920px; margin: auto; }
+    .card { background: white; padding: 1rem; border-radius: 8px; margin-top: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+    .card button { margin-top: 0.5rem; background: #52ab98; border: none; padding: 0.4rem 0.8rem; border-radius: 5px; color: white; cursor: pointer; font-size: 0.9rem; }
+    .card button:hover { background: #3c8d7a; }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 320px; text-align: center; }
+    .modal-content input, .modal-content select { width: 100%; padding: 0.6rem; margin: 0.4rem 0; border: 1px solid #ccc; border-radius: 5px; }
+    .modal-content button { margin-top: 0.5rem; background: #52ab98; border: none; padding: 0.4rem 0.8rem; border-radius: 5px; color: white; cursor: pointer; font-size: 0.9rem; }
+    .modal-content button:hover { background: #3c8d7a; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="nomePaciente">Carregando...</h1>
+  </header>
+
+  <main>
+    <button onclick="window.location.href='index.html'">Voltar</button>
+    <button onclick="abrirModalColeta()">Nova Coleta</button>
+    <div id="infoPaciente" class="card"></div>
+    <h2>Histórico de Coletas</h2>
+    <div id="listaColetas"></div>
+  </main>
+
+  <!-- Modal de Coleta -->
+  <div class="modal" id="modalColeta">
+    <div class="modal-content">
+      <h3>Nova Coleta</h3>
+      <label><input type="checkbox" id="coletaDados" checked> Dados EMG</label><br>
+      <label><input type="checkbox" id="coletaVideo" checked> Vídeo</label><br>
+      <label for="tempoExec">Tempo de execução:</label>
+      <select id="tempoExec">
+        <option value="20">20 segundos</option>
+        <option value="40">40 segundos</option>
+        <option value="60">60 segundos</option>
+        <option value="120">120 segundos</option>
+        <option value="180">180 segundos</option>
+        <option value="240">240 segundos</option>
+        <option value="300">300 segundos</option>
+      </select>
+      <div style="margin-top:8px"></div>
+      <button onclick="iniciarColeta()">Iniciar</button>
+      <button onclick="fecharModalColeta()">Cancelar</button>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const pacienteId = urlParams.get("id");
+    if (!pacienteId) {
+      alert("Paciente inválido!");
+      window.location.href = "index.html";
+    }
+
+    function abrirModalColeta() { document.getElementById("modalColeta").style.display = "flex"; }
+    function fecharModalColeta() { document.getElementById("modalColeta").style.display = "none"; }
+
+    async function carregarPaciente() {
+      const res = await fetch(`/pacientes`);
+      const pacientes = await res.json();
+      const paciente = pacientes.find(p => p.id == pacienteId);
+      if (!paciente) {
+        alert("Paciente não encontrado");
+        window.location.href = "index.html";
+        return;
+      }
+      document.getElementById("nomePaciente").innerText = `Paciente: ${paciente.nome}`;
+      document.getElementById("infoPaciente").innerHTML = `
+        <p><strong>Idade:</strong> ${paciente.idade}</p>
+        <p><strong>Peso:</strong> ${paciente.peso || "—"} kg</p>
+        <p><strong>Altura:</strong> ${paciente.altura || "—"} m</p>
+        <p><strong>Gênero:</strong> ${paciente.genero || "—"}</p>
+      `;
+    }
+
+    async function carregarColetas() {
+      const res = await fetch(`/pacientes/${pacienteId}/coletas`);
+      const coletas = await res.json();
+      const lista = document.getElementById("listaColetas");
+      if (coletas.length === 0) {
+        lista.innerHTML = "<p>Nenhuma coleta encontrada.</p>";
+        return;
+      }
+      lista.innerHTML = coletas.map(c => `
+        <div class="card" id="coleta-${c.id}">
+            <strong>${c.data}</strong><br>
+            <button onclick="verColeta(${c.id})">Ver Coleta</button>
+            <button onclick="baixarCsv(${c.id})">Baixar CSV</button>
+        </div>
+        `).join("");
+    }
+
+    async function iniciarColeta() {
+        const rodar_dados = document.getElementById("coletaDados").checked;
+        const rodar_video = document.getElementById("coletaVideo").checked;
+        const tempo_execucao = parseInt(document.getElementById("tempoExec").value);
+
+        const modal = document.getElementById("modalColeta");
+        const botao = modal.querySelector("button[onclick='iniciarColeta()']");
+        botao.disabled = true;
+        botao.textContent = "Coletando...";
+
+        try {
+            const res = await fetch("/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paciente_id: pacienteId, rodar_dados, rodar_video, tempo_execucao })
+            });
+
+            if (!res.ok) throw new Error("Erro ao iniciar coleta");
+
+            const data = await res.json();
+            const coletaId = data.id;
+
+            // fecha o modal
+            fecharModalColeta();
+
+            // mensagem de sucesso (não bloqueia a UI)
+            const status = document.createElement("div");
+            status.textContent = "✅ Coleta finalizada com sucesso!";
+            status.style.background = "#e8f5e9";
+            status.style.border = "1px solid #81c784";
+            status.style.color = "#2e7d32";
+            status.style.padding = "10px";
+            status.style.borderRadius = "5px";
+            status.style.marginBottom = "15px";
+            document.querySelector("main").prepend(status);
+            setTimeout(() => status.remove(), 5000);
+
+            // Atualiza histórico e mostra automaticamente a coleta feita
+            await carregarColetas();
+            verColeta(coletaId);
+
+        } catch (err) {
+            alert("Erro: " + err.message);
+        } finally {
+            botao.disabled = false;
+            botao.textContent = "Iniciar";
+        }
+        }
+
+
+    async function verColeta(id) {
+        // Verifica se o elemento da coleta já existe (para evitar duplicar)
+        const card = document.getElementById(`coleta-${id}`);
+        if (!card) return;
+
+        // Se o conteúdo já estiver aberto, recolhe (toggle)
+        const existing = card.querySelector(".coleta-detalhe");
+        if (existing) {
+            existing.remove();
+            return;
+        }
+
+        // Mostra um "carregando" temporário dentro da coleta
+        const loading = document.createElement("div");
+        loading.textContent = "Carregando coleta...";
+        loading.style.color = "#777";
+        card.appendChild(loading);
+
+        try {
+            // monta a estrutura do vídeo + gráfico
+            const html = `
+            <div class="coleta-detalhe" style="margin-top:10px">
+                <h3>Vídeo</h3>
+                <video id="video-${id}" width="480" controls>
+                <source src="/video/${id}" type="video/mp4">
+                Seu navegador não suporta vídeo.
+                </video>
+
+                <h3>Sinal EMG</h3>
+                <div class="img-container" id="imgContainer-${id}" style="overflow:auto;border:1px solid #ddd;background:#fff;padding:8px;max-height:70vh;">
+                <img id="emgImg-${id}" src="/grafico/${id}" alt="Gráfico EMG" style="display:block;width:auto;max-width:none;height:auto;transform-origin:top left;transition:transform 0.12s ease;">
+                </div>
+
+                <div class="zoom-controls" style="margin-top:8px;display:flex;gap:0.5rem;">
+                <button onclick="zoomOut(${id})">-</button>
+                <button onclick="zoomReset(${id})">Reset</button>
+                <button onclick="zoomIn(${id})">+</button>
+                <button onclick="window.open('/grafico/${id}', '_blank')">Abrir em nova aba</button>
+                <button onclick="baixarCsv(${id})">Baixar CSV</button>
+                </div>
+            </div>
+            `;
+
+            // remove o "carregando"
+            loading.remove();
+
+            // insere o HTML no card da coleta (sem apagar o resto)
+            card.insertAdjacentHTML("beforeend", html);
+
+            // adiciona controle de zoom individual por coleta
+            let currentScale = 1;
+            const img = document.getElementById(`emgImg-${id}`);
+
+            window[`zoomIn`] = function(idRef) {
+            if (idRef !== id) return;
+            currentScale = Math.min(10, currentScale + 0.1);
+            applyScale();
+            };
+            window[`zoomOut`] = function(idRef) {
+            if (idRef !== id) return;
+            currentScale = Math.max(0.1, currentScale - 0.1);
+            applyScale();
+            };
+            window[`zoomReset`] = function(idRef) {
+            if (idRef !== id) return;
+            currentScale = 1;
+            applyScale();
+            };
+
+            function applyScale() {
+            img.style.transform = `scale(${currentScale})`;
+            }
+        } catch (err) {
+            loading.textContent = "Erro ao carregar coleta: " + err.message;
+            loading.style.color = "red";
+        }
+    }
+
+
+
+    async function baixarCsv(id) {
+      const res = await fetch(`/csv/${id}`);
+      if (!res.ok) {
+        alert("Erro ao baixar CSV");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `coleta_${id}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    carregarPaciente();
+    carregarColetas();
+  </script>
+</body>
+</html>
