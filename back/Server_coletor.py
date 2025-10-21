@@ -8,17 +8,18 @@ import sys
 from matplotlib.collections import LineCollection
 from scipy.signal import butter, filtfilt
 from pathlib import Path
+import json
 
 
 base_dir = Path(__file__).resolve().parent
 output_data = base_dir.parent / "dados_e_videos" / "emg_data.csv"
 output_graph = base_dir.parent / "dados_e_videos" / "emg_plot.png"
+with open(base_dir.parent / "config.json") as f:
+    cfg = json.load(f)
 
-
-BROKER = "192.168.238.153"
-PORT = 1883
+BROKER = cfg["wifi_broker_ip"]
 TOPIC_DATA = "emg/sensor1"
-TOPIC_CTRL = "emg/control"
+PORT = 1883
 
 data_buffer = []
 duration = int(sys.argv[1]) if len(sys.argv) > 1 else 10
@@ -68,12 +69,10 @@ def collect_data(duration, output_path):
     client.loop_start()
 
     # envia comando start
-    client.publish(TOPIC_CTRL, "start")
     print(f"Coletando dados por {duration} segundos...")
     time.sleep(duration)
 
     # envia comando stop
-    client.publish(TOPIC_CTRL, "stop")
     client.loop_stop()
     client.disconnect()
 
