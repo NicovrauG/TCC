@@ -5,6 +5,7 @@ from pathlib import Path
 import psycopg2
 import subprocess
 from datetime import datetime
+import socket, json, glob, time, os, serial
 
 
 app = FastAPI()
@@ -93,6 +94,18 @@ def run_scripts(rodar_dados=True, rodar_video=True, tempo_execucao=20):
     except Exception as e:
         raise
 
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Conecta sem enviar nada para descobrir o IP da interface ativa
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
+
 
 # utilitário para garantir bytes vindo do banco
 def _to_bytes(raw):
@@ -109,6 +122,7 @@ def _to_bytes(raw):
 
 
 # ------------------ Endpoints para pacientes ------------------
+
 
 @app.post("/pacientes")
 async def criar_paciente(request: Request):
@@ -309,3 +323,90 @@ def get_video(coleta_id: int):
         media_type = "application/octet-stream"
 
     return FileResponse(str(video_path), media_type=media_type)
+
+# ------------------ Configuração do aparelho ------------------
+
+CONFIG_PATH = BASE_DIR / "config.json"
+
+
+def get_local_ip():
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
+
+def find_latest_esp_port():
+    ports = glob.glob("/dev/ttyACM*")
+    if not ports:
+        raise FileNotFoundError("Nenhum dispositivo /dev/ttyACM encontrado.")
+    ports.sort(key=os.path.getctime, reverse=True)
+    return ports[0]
+
+def send_config_to_esp(config_data, retries=5):
+    """Envia JSON de configuração via Serial para o ESP."""
+    config = {
+        "ssid": config_data["wifi_ssid"],
+        "password": config_data["wifi_password"],
+        "broker_ip": config_data["wifi_broker_ip"],
+    }
+
+    esp_json = json.dumps(config) + "\n"
+
+    for attempt in range(retries):
+        try:
+            port = find_latest_esp_port()
+            print(f"[INFO] Tentando enviar config para {port} (tentativa {attempt+1}/{retries})")
+            ser = serial.Serial(port, 115200, timeout=2)
+            time.sleep(2)  # espera estabilizar a porta
+            ser.write(esp_json.encode())
+            ser.flush()
+            ser.close()
+            print("[INFO] Configuração enviada com sucesso ao ESP.")
+            return True
+        except FileNotFoundError:
+            print("[ERRO] Nenhum dispositivo /dev/ttyACM encontrado.")
+            time.sleep(2)
+        except serial.SerialException as e:
+            print(f"[ERRO] Falha na serial: {e}")
+            time.sleep(2)
+
+    print("[ERRO] Falha ao enviar configuração após múltiplas tentativas.")
+    return False
+
+
+@app.get("/config/ip")
+def get_ip_info():
+    return {"broker_ip": get_local_ip()}
+
+@app.post("/config/save")
+async def save_config(request: Request):
+    body = await request.json()
+    ssid = body.get("wifi_ssid")
+    password = body.get("wifi_password")
+
+    if not ssid or not password:
+        raise HTTPException(status_code=400, detail="SSID e senha são obrigatórios.")
+
+    broker_ip = get_local_ip()
+    config_data = {
+        "wifi_ssid": ssid,
+        "wifi_password": password,
+        "wifi_broker_ip": broker_ip,
+    }
+
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(config_data, f, indent=4)
+
+    success = send_config_to_esp(config_data)
+
+    return {
+        "status": "ok" if success else "erro",
+        "broker_ip": broker_ip
+    }
+
