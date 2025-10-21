@@ -35,6 +35,7 @@
   <main>
     <div>
       <button onclick="abrirModalCadastro()">Cadastrar novo</button>
+      <button onclick="abrirModalConfig()">Configurar Aparelho</button>
     </div>
     <h2>Registros</h2>
     <input 
@@ -63,6 +64,18 @@
       </select>
       <button onclick="criarPaciente()">Cadastrar</button>
       <button onclick="fecharModalCadastro()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal" id="modalConfig">
+    <div class="modal-content">
+      <h3>Configurar Aparelho</h3>
+      <p>Conecte o ESP32 e clique em “Reset” antes de enviar as configurações.</p>
+      <input type="text" id="wifi_ssid" placeholder="Nome do Wi-Fi (SSID)" required>
+      <input type="password" id="wifi_pass" placeholder="Senha do Wi-Fi" required>
+      <div id="ip_broker_display" style="margin: 0.5rem 0; font-size: 0.9rem; color: #444;">Detectando IP do broker...</div>
+      <button onclick="salvarConfig()">Enviar e Salvar</button>
+      <button onclick="fecharModalConfig()">Cancelar</button>
     </div>
   </div>
 
@@ -169,7 +182,7 @@
       }
     }
 
- 
+
     async function mostrarPaciente(paciente_id) {
       const resultado = document.getElementById("resultado");
       resultado.innerHTML = "Carregando histórico do paciente...";
@@ -191,7 +204,7 @@
                       <button onclick="mostrarColeta(${c.id})">Ver Coleta</button>
                       <button onclick="baixarCsv(${c.id})">Baixar CSV</button>
                     </div>
-                   </li>`;
+                    </li>`;
         });
         html += `</ul>`;
         resultado.innerHTML = html;
@@ -199,6 +212,50 @@
         resultado.innerHTML = `<p style="color:red">Erro: ${err.message}</p>`;
       }
     }
+
+    function abrirModalConfig() {
+      document.getElementById("modalConfig").style.display = "flex";
+      atualizarIPBroker();
+    }
+    function fecharModalConfig() {
+      document.getElementById("modalConfig").style.display = "none";
+    }
+
+    async function atualizarIPBroker() {
+      const div = document.getElementById("ip_broker_display");
+      div.innerText = "Detectando IP do broker...";
+      try {
+        const res = await fetch("/config/ip");
+        const data = await res.json();
+        div.innerHTML = `Broker detectado: <strong>${data.broker_ip}</strong>`;
+      } catch (err) {
+        div.innerHTML = "<span style='color:red'>Erro ao detectar IP</span>";
+      }
+    }
+
+    async function salvarConfig() {
+      const wifi_ssid = document.getElementById("wifi_ssid").value;
+      const wifi_password = document.getElementById("wifi_pass").value;
+      if (!wifi_ssid || !wifi_password) {
+        alert("Por favor, preencha o nome e senha do Wi-Fi");
+        return;
+      }
+
+      try {
+        const res = await fetch("/config/save", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ wifi_ssid, wifi_password })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        alert(`Configuração salva com sucesso!\nBroker: ${data.broker_ip}`);
+        fecharModalConfig();
+      } catch (err) {
+        alert("Erro ao salvar configuração: " + err.message);
+      }
+    }
+
 
     carregarPacientes();
   </script>
