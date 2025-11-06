@@ -50,23 +50,32 @@ def run_scripts(rodar_dados=True, rodar_video=True, tempo_execucao=20):
         script1 = server_dir / "Server_coletor.py"   # dados
         script2 = server_dir / "teste_viscomp.py"    # vídeo
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-        video_filename = f"video_{timestamp}.mp4"
+        videos_dir = server_dir.parent / "dados_e_videos"
+        import re
+        max_idx = 0
+        for p in videos_dir.glob("video_*.mp4"):
+            m = re.match(r"video_(\d+)\.mp4$", p.name)
+            if m:
+                idx = int(m.group(1))
+                if idx > max_idx:
+                    max_idx = idx
+        next_index = max_idx + 1
+        video_filename = f"video_{next_index:04d}.mp4"
         video_file_path = server_dir.parent / "dados_e_videos" / video_filename
 
         processes = []
 
+        if rodar_video:
+            processes.append(subprocess.Popen(
+                ["python", str(script2), str(tempo_execucao), str(next_index)],
+                cwd=str(server_dir)
+            ))
+            time.sleep(2)
         if rodar_dados:
             processes.append(subprocess.Popen(
                 ["python", str(script1), str(tempo_execucao)],
                 cwd=str(server_dir)
             ))
-        if rodar_video:
-            processes.append(subprocess.Popen(
-                ["python", str(script2), str(tempo_execucao)],
-                cwd=str(server_dir)
-            ))
-
         # espera terminar
         for p in processes:
             p.wait()
