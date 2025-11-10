@@ -18,6 +18,7 @@
     .modal-content input, .modal-content select { width: 100%; padding: 0.6rem; margin: 0.4rem 0; border: 1px solid #ccc; border-radius: 5px; }
     .modal-content button { margin-top: 0.5rem; background: #52ab98; border: none; padding: 0.4rem 0.8rem; border-radius: 5px; color: white; cursor: pointer; font-size: 0.9rem; }
     .modal-content button:hover { background: #3c8d7a; }
+    select:disabled { cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -33,12 +34,24 @@
     <div id="listaColetas"></div>
   </main>
 
-  <!-- Modal de Coleta -->
+
   <div class="modal" id="modalColeta">
     <div class="modal-content">
-      <h3>Nova Coleta</h3>
+      <h3 style="margin-bottom:6px;">Nova Coleta</h3>
+      <label><input type="checkbox" id="coletaVideo"> Vídeo</label><br>
       <label><input type="checkbox" id="coletaDados" checked> Dados EMG</label><br>
-      <label><input type="checkbox" id="coletaVideo" checked> Vídeo</label><br>
+
+      <div id="tipoVideoContainer" style="margin-top:8px; text-align:left;">
+        <label>Dispositivo utilizado:</label><br>
+        <select id="tipoVideo" style="width:100%; padding:6px;">
+          <option value="pc">Computador</option>
+          <option value="mobile">Celular</option>
+        </select>
+      </div>
+
+      <hr style="margin:14px 0;">
+
+      <h3 style="margin-bottom:6px;">Duração</h3>
       <label for="tempoExec">Tempo de execução:</label>
       <select id="tempoExec">
         <option value="20">20 segundos</option>
@@ -50,10 +63,13 @@
         <option value="300">300 segundos</option>
       </select>
       <div style="margin-top:8px"></div>
-      <button onclick="iniciarColeta()">Iniciar</button>
+      <button onclick="decidirColeta()" id="botaoIniciarColeta">Iniciar</button>
       <button onclick="fecharModalColeta()">Cancelar</button>
     </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/pose.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js"></script>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -63,8 +79,48 @@
       window.location.href = "index.html";
     }
 
-    function abrirModalColeta() { document.getElementById("modalColeta").style.display = "flex"; }
+    function abrirModalColeta() {
+        document.getElementById("modalColeta").style.display = "flex";
+
+        // resetar vídeo desligado
+        const videoCheck = document.getElementById("coletaVideo");
+        videoCheck.checked = false;
+
+        // resetar tipo = pc e desabilitar imediatamente
+        const tipoSelect = document.getElementById("tipoVideo");
+        tipoSelect.value = "pc";
+        tipoSelect.disabled = true;
+        tipoSelect.style.opacity = 0.4;
+
+        // resetar dados EMG ligado
+        document.getElementById("coletaDados").checked = true;
+    }
+
     function fecharModalColeta() { document.getElementById("modalColeta").style.display = "none"; }
+    
+    document.getElementById("coletaVideo").addEventListener("change", function () {
+      const select = document.getElementById("tipoVideo");
+
+      if (this.checked) {
+        // habilita select
+        select.disabled = false;
+        select.style.opacity = 1;
+
+        // se NÃO for celular, desabilita a opção mobile
+        if (!MOBILE_DETECT) {
+          document.querySelector("#tipoVideo option[value='mobile']").disabled = true;
+          select.value = "pc"; // força computador
+        } else {
+          document.querySelector("#tipoVideo option[value='mobile']").disabled = false;
+        }
+      } else {
+        // desabilita select e volta para PC
+        select.disabled = true;
+        select.style.opacity = 0.4;
+        select.value = "pc";
+      }
+    });
+
 
     async function carregarPaciente() {
       const res = await fetch(`/pacientes`);
@@ -97,9 +153,24 @@
             <strong>${c.data}</strong><br>
             <button onclick="verColeta(${c.id})">Ver Coleta</button>
             <button onclick="baixarCsv(${c.id})">Baixar CSV</button>
+            <button onclick="baixarPdf(${c.id})">Baixar PDF</button>
         </div>
         `).join("");
     }
+
+    function decidirColeta() {
+      const video = document.getElementById("coletaVideo").checked;
+      const tipo = document.getElementById("tipoVideo").value;
+
+      if (!video || tipo === "pc") {
+        // coleta normal no notebook
+        iniciarColeta();
+      } else {
+        // coleta mobile
+        iniciarColetaMobile();
+      }
+    }
+
 
     async function iniciarColeta() {
         const rodar_dados = document.getElementById("coletaDados").checked;
@@ -107,7 +178,7 @@
         const tempo_execucao = parseInt(document.getElementById("tempoExec").value);
 
         const modal = document.getElementById("modalColeta");
-        const botao = modal.querySelector("button[onclick='iniciarColeta()']");
+        const botao = document.getElementById("botaoIniciarColeta");
         botao.disabled = true;
         botao.textContent = "Coletando...";
 
@@ -148,7 +219,7 @@
             botao.disabled = false;
             botao.textContent = "Iniciar";
         }
-        }
+    }
 
 
     async function verColeta(id) {
@@ -190,6 +261,7 @@
                 <button onclick="zoomIn(${id})">+</button>
                 <button onclick="window.open('/grafico/${id}', '_blank')">Abrir em nova aba</button>
                 <button onclick="baixarCsv(${id})">Baixar CSV</button>
+                <button onclick="baixarPdf(${id})">Baixar PDF</button>
                 </div>
             </div>
             `;
@@ -248,6 +320,297 @@
       URL.revokeObjectURL(url);
     }
 
+    async function baixarPdf(id) {
+      const res = await fetch(`/relatorio/${id}`);
+      if (!res.ok) {
+        alert("Relatório não disponível");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `relatorio_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+
+
+
+
+
+
+
+    const MOBILE_DETECT = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const videoPreviewWidth = 320;
+    const videoPreviewHeight = 240;
+
+
+    /* ======= Funções de cálculo de ângulo (igual ao Python) ======= */
+    function calcularAngulo(a, b, c) {
+      // a, b, c são [x, y] normalizados (0..1); retornamos em graus
+      const ax = a[0], ay = a[1];
+      const bx = b[0], by = b[1];
+      const cx = c[0], cy = c[1];
+      const abx = ax - bx, aby = ay - by;
+      const cbx = cx - bx, cby = cy - by;
+      const dot = abx * cbx + aby * cby;
+      const magAB = Math.hypot(abx, aby);
+      const magCB = Math.hypot(cbx, cby);
+      const cosv = Math.max(-1, Math.min(1, dot / (magAB * magCB + 1e-9)));
+      const ang = Math.acos(cosv);
+      return ang * (180 / Math.PI);
+    }
+
+
+    async function iniciarColetaMobile() {
+      const rodar_dados = document.getElementById("coletaDados").checked;
+      const rodar_video = document.getElementById("coletaVideo").checked;
+      const tempo_execucao = parseInt(document.getElementById("tempoExec").value);
+      const paciente_id = pacienteId; // variável já presente no paciente.html
+
+      // 1) Request /start_mobile to reserve index & start server collector
+      let startResp;
+      try {
+        const res = await fetch("/start_mobile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paciente_id: parseInt(paciente_id), tempo_execucao })
+        });
+        if (!res.ok) throw new Error("Falha ao iniciar coleta no servidor");
+        startResp = await res.json();
+      } catch (err) {
+        alert("Erro ao iniciar coleta: " + err.message);
+        return;
+      }
+      const nextIndex = startResp.next_index;
+      console.log("start_mobile OK nextIndex=", nextIndex);
+
+      // 2) Setup media capture
+      const constraints = {
+        audio: false,
+        video: {
+        facingMode: "environment",
+        width: { exact: 320 },
+        height: { exact: 240 },
+        advanced: [{ focalLength: 2.5 }]
+      }
+
+      };
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        alert("Erro ao acessar câmera: " + err.message);
+        return;
+      }
+
+      // Create <video> to play camera
+      const videoEl = document.createElement("video");
+      videoEl.style.display = "none";
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      videoEl.muted = true;
+      videoEl.width = videoPreviewWidth;
+      videoEl.height = videoPreviewHeight;
+      document.body.appendChild(videoEl);
+      videoEl.srcObject = stream;
+      await videoEl.play();
+
+      // Create canvas overlay
+      const canvas = document.createElement("canvas");
+      canvas.width = videoPreviewWidth;
+      canvas.height = videoPreviewHeight;
+      canvas.style.border = "1px solid #ddd";
+      canvas.style.display = "block";
+      canvas.style.maxWidth = "100%";
+      // show canvas UI at top of page briefly
+      document.querySelector("main").prepend(canvas);
+      const ctx = canvas.getContext("2d");
+
+      // For recording: capture canvas stream (canvas includes overlay drawing)
+      const recordStream = canvas.captureStream(30); // 30 fps target
+      let options = { mimeType: 'video/mp4; codecs=avc1.42E01E' };
+      let mediaRecorder;
+      let chunks = [];
+      try {
+        mediaRecorder = new MediaRecorder(recordStream, options);
+      } catch (e) {
+        // fallback to webm
+        try {
+          options = { mimeType: 'video/webm;codecs=vp8' };
+          mediaRecorder = new MediaRecorder(recordStream, options);
+        } catch (e2) {
+          alert("MediaRecorder não suportado neste navegador.");
+          return;
+        }
+      }
+      mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+
+      // Buffer for angles
+      const anglesBuffer = [];
+
+      // Initialize MediaPipe Pose (uses @mediapipe/pose)
+      // We'll use the provided Pose class from the mediapipe CDN
+      const pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/${file}` });
+      pose.setOptions({
+        modelComplexity: 0,
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      pose.onResults(onPoseResults);
+
+      // Helper: process a frame using pose
+      let processing = false;
+      async function processFrame() {
+        if (processing) return;
+        processing = true;
+        try {
+          await pose.send({ image: videoEl });
+        } catch (err) {
+          console.warn("pose.send error", err);
+        } finally {
+          processing = false;
+        }
+      }
+
+      // Draw and store results callback
+      function onPoseResults(results) {
+        // draw camera frame
+        ctx.save();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // draw video frame
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+        // draw skeleton if landmarks present
+        if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+          // draw landmarks lines using drawing_utils if available
+          if (window.drawConnectors && window.drawLandmarks) {
+            drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS);
+            drawLandmarks(ctx, results.poseLandmarks);
+          } else {
+            // simple drawing if drawing_utils not present
+            ctx.strokeStyle = "#00FF00";
+            ctx.lineWidth = 2;
+          }
+
+          // compute angle for right OR left elbow (choose whichever confident)
+          try {
+            const lm = results.poseLandmarks;
+            // Each landmark has .x, .y normalized coordinates
+            const l_sh = lm[11]; // left_shoulder
+            const l_el = lm[13]; // left_elbow
+            const l_wr = lm[15]; // left_wrist
+
+            const r_sh = lm[12]; // right_shoulder
+            const r_el = lm[14]; // right_elbow
+            const r_wr = lm[16]; // right_wrist
+
+            // pick which side has higher visibility (if available)
+            const leftVis = (l_sh.visibility || 0) + (l_el.visibility || 0) + (l_wr.visibility || 0);
+            const rightVis = (r_sh.visibility || 0) + (r_el.visibility || 0) + (r_wr.visibility || 0);
+
+            let angle = null;
+            if (leftVis >= rightVis) {
+              angle = calcularAngulo([l_sh.x, l_sh.y], [l_el.x, l_el.y], [l_wr.x, l_wr.y]);
+              // draw text at elbow
+              const px = Math.round(l_el.x * canvas.width);
+              const py = Math.round(l_el.y * canvas.height);
+              ctx.fillStyle = "white";
+              ctx.font = "20px Arial";
+              ctx.fillText(String(Math.round(angle)), px + 6, py - 6);
+            } else {
+              angle = calcularAngulo([r_sh.x, r_sh.y], [r_el.x, r_el.y], [r_wr.x, r_wr.y]);
+              const px = Math.round(r_el.x * canvas.width);
+              const py = Math.round(r_el.y * canvas.height);
+              ctx.fillStyle = "white";
+              ctx.font = "20px Arial";
+              ctx.fillText(String(Math.round(angle)), px + 6, py - 6);
+            }
+
+            // push {t, angle} using epoch seconds
+            const timestamp = Date.now() / 1000.0;
+            anglesBuffer.push({ t: timestamp, angle: Number(angle) });
+          } catch (err) {
+            console.warn("Erro ao extrair ângulo:", err);
+          }
+        }
+
+        ctx.restore();
+      }
+
+      // Kick off frame loop
+      let rafId;
+      function frameLoop() {
+        processFrame().catch(()=>{});
+        rafId = requestAnimationFrame(frameLoop);
+      }
+
+      // Start recording & processing
+      chunks = [];
+      mediaRecorder.start(1000); // dataavailable cada 1s
+      frameLoop();
+
+      // Stop after tempo_execucao seconds
+      await new Promise(resolve => setTimeout(resolve, tempo_execucao * 1000));
+
+      // stop things
+      mediaRecorder.stop();
+      cancelAnimationFrame(rafId);
+
+      // small pause to flush last frames
+      await new Promise(r => setTimeout(r, 400));
+
+      // make video blob
+      const videoBlob = new Blob(chunks, { type: options.mimeType || 'video/webm' });
+
+      // prepare angles JSONL blob (overwrite behavior expected by backend)
+      const lines = anglesBuffer.map(a => JSON.stringify(a)).join("\n") + "\n";
+      const anglesBlob = new Blob([lines], { type: "application/json" });
+
+      // build FormData and upload
+      const fd = new FormData();
+      fd.append("paciente_id", paciente_id);
+      fd.append("tempo_execucao", tempo_execucao);
+      fd.append("next_index", nextIndex);
+      // name the file with correct extension to help backend guess mime
+      const ext = (options.mimeType && options.mimeType.includes('mp4')) ? ".mp4" : ".webm";
+      fd.append("video", videoBlob, `video_${String(nextIndex).padStart(4,"0")}${ext}`);
+      fd.append("angles", anglesBlob, "video_angles.jsonl");
+
+      // send to /upload_mobile
+      try {
+        const upl = await fetch("/upload_mobile", { method: "POST", body: fd });
+        if (!upl.ok) {
+          const txt = await upl.text();
+          throw new Error(txt || "Upload falhou");
+        }
+        const result = await upl.json();
+        console.log("upload_mobile result:", result);
+        // close modal and update UI
+        fecharModalColeta();
+        // refresh coletas
+        await carregarColetas();
+        if (result.id) {
+          verColeta(result.id);
+        }
+        // cleanup UI
+        videoEl.pause();
+        videoEl.srcObject = null;
+        videoEl.remove();
+        canvas.remove();
+        alert("Coleta mobile finalizada e salva!");
+      } catch (err) {
+        alert("Erro no upload: " + err.message);
+        console.error(err);
+      }
+    }
     carregarPaciente();
     carregarColetas();
   </script>
