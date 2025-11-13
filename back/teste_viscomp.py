@@ -89,10 +89,11 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             punho_esquerdo = [landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x,
                     landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y]
 
-            angulo = calcular_angulo(ombro_esquerdo, cotovelo_esquerdo, punho_esquerdo)
+            #angulo = calcular_angulo(ombro_esquerdo, cotovelo_esquerdo, punho_esquerdo)
+            angulo = calcular_angulo(ombro_direito, cotovelo_direito, punho_direito)
 
             cv2.putText(image, str(int(angulo)),
-                        tuple(np.multiply(cotovelo_esquerdo, [frame_width, frame_height]).astype(int)),
+                        tuple(np.multiply(cotovelo_direito, [frame_width, frame_height]).astype(int)),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
             try:
                 entry = {"t": time.time(), "angle": float(angulo)}
@@ -134,9 +135,9 @@ try:
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart",
+        "-r", "30",
         output_path
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    # opcional: substituir o arquivo original pelo transcodificado para manter mesmo nome
     out_p = Path(output_path)
     in_p = Path(input_path)
     if out_p.exists():
