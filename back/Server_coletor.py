@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 from matplotlib.collections import LineCollection
-from scipy.signal import butter, filtfilt, find_peaks
+from scipy.signal import butter, filtfilt, find_peaks, peak_widths
 from pathlib import Path
 import json, os
 
@@ -95,13 +95,17 @@ def collect_data(duration, output_path):
 
     print(f"Coleta finalizada! {len(data_buffer)} amostras salvas em {output_data}")
 
+    num_amostras = len(data_buffer)
+    tempo_total = duration  # segundos de coleta
+    fs_real = num_amostras / tempo_total
+    print(f"[INFO] Frequência real estimada: {fs_real:.2f} Hz")
 
-    fs = 1000  # Hz
+    fs = fs_real  # Hz
     ordem = 4
 
     # Frequências de corte
-    fc_passa_alta = 20     # Hz
-    fc_passa_baixa = 450 # Hz
+    fc_passa_alta = min(20, fs_real * 0.4)    # ainda segura
+    fc_passa_baixa = min(450, fs_real * 0.45) # garante < Nyquist
 
     # Leitura dos dados
     df = pd.read_csv(output_data)
@@ -168,12 +172,34 @@ def collect_data(duration, output_path):
 
     # Parametros de detecção (ajuste se necessário)
     peak_height = np.max(envoltorio) * 0.25   # 25% do pico máximo
-    min_distance_s = 0.2                       # separação mínima entre picos em segundos
+    min_distance_s = 1                # separação mínima entre picos em segundos
     min_distance_samples = int(min_distance_s * fs)
 
     peaks, props = find_peaks(envoltorio, height=peak_height, distance=min_distance_samples)
     peak_times = tempo[peaks]  # tempo relativo em segundos
     peak_values = envoltorio[peaks]
+
+    # --- Calcula área de ativação para cada pico usando as bordas fornecidas por peak_widths ---
+    if peaks.size > 0:
+        widths_res = peak_widths(envoltorio, peaks, rel_height=0.5)  # largura na metade da altura
+        left_ips = widths_res[2]
+        right_ips = widths_res[3]
+
+        peak_areas = np.zeros(len(peaks))
+        for i, (l, r) in enumerate(zip(left_ips, right_ips)):
+            start = max(0, int(np.floor(l)))
+            end = min(len(envoltorio) - 1, int(np.ceil(r)))
+            seg_t = tempo[start:end + 1]
+            seg_vals = envoltorio[start:end + 1]
+            if seg_vals.size > 0:
+                peak_areas[i] = np.trapz(seg_vals, seg_t)
+            else:
+                peak_areas[i] = 0.0
+    else:
+        peak_areas = np.array([])
+
+    # área total de ativação do envoltório (denominador para cálculo de %)
+    total_activation_area = np.trapz(envoltorio, dx=1/fs)
 
     # --- Procura arquivos de ângulos gravados (JSONL) ---
     angles_dir = base_dir.parent / "dados_e_videos"
@@ -239,17 +265,32 @@ def collect_data(duration, output_path):
                 matched_angles_ts = np.array(ts_list) - start_abs
                 matched_angles_vals = np.array(val_list)
 
-    # --- Interpola ângulo nos tempos dos picos (se houver ângulos) ---
-    if matched_angles_ts.size > 0 and peak_times.size > 0:
-        # garante ordenação para interp
-        order = np.argsort(matched_angles_ts)
-        matched_angles_ts = matched_angles_ts[order]
-        matched_angles_vals = matched_angles_vals[order]
-        # interpola (valores fora do alcance viram NaN)
-        angles_at_peaks = np.interp(peak_times, matched_angles_ts, matched_angles_vals,
-                                    left=np.nan, right=np.nan)
-    else:
-        angles_at_peaks = np.full_like(peak_times, np.nan, dtype=float)
+        # --- Interpola ângulo nos tempos dos picos (se houver ângulos) ---
+        if matched_angles_ts.size > 0 and peak_times.size > 0:
+            order = np.argsort(matched_angles_ts)
+            matched_angles_ts = matched_angles_ts[order]
+            matched_angles_vals = matched_angles_vals[order]
+
+            angles_at_peaks = np.full_like(peak_times, np.nan, dtype=float)
+
+            for i, (l, r) in enumerate(zip(left_ips, right_ips)):
+                # converte bordas de índice para tempo
+                t_ini = tempo[int(np.floor(l))] if l < len(tempo) else tempo[-1]
+                t_fim = tempo[int(np.ceil(r))] if r < len(tempo) else tempo[-1]
+
+                # busca todos os ângulos dentro dessa janela temporal
+                mask = (matched_angles_ts >= t_ini) & (matched_angles_ts <= t_fim)
+                subset = matched_angles_vals[mask]
+
+                if subset.size > 0:
+                    # pega o menor ângulo (flexão máxima)
+                    angles_at_peaks[i] = np.min(subset)
+                else:
+                    # fallback: usa interpolação se não houver dado na janela
+                    angles_at_peaks[i] = np.interp(peak_times[i], matched_angles_ts, matched_angles_vals,
+                                                left=np.nan, right=np.nan)
+        else:
+            angles_at_peaks = np.full_like(peak_times, np.nan, dtype=float)
 
     # --- Salva arquivo JSONL com picos e ângulos (opcional) ---
     peaks_out = angles_dir / f"emg_peaks_with_angles_{int(start_abs)}.jsonl"
@@ -296,9 +337,6 @@ def collect_data(duration, output_path):
         # marcador dos picos no envoltório
         ax2.scatter(peak_times, peak_values, color='red', s=30, label='Picos (envoltório)')
 
-        # soma das amplitudes dos picos (usada para calcular % por amplitude)
-        sum_peaks = np.sum(peak_values) if peak_values.size > 0 else 0.0
-
         # padding vertical em unidades de dados para posicionar texto acima da linha
         y_range = dados_positivos.max() - dados_positivos.min()
         y_pad = y_range * 0.05 if y_range > 0 else (np.abs(peak_values).max() * 0.05 + 1e-6)
@@ -308,8 +346,8 @@ def collect_data(duration, output_path):
             ang = angles_at_peaks[i] if (i < len(angles_at_peaks)) else np.nan
 
             # percentual baseado apenas na amplitude do pico
-            if sum_peaks > 0:
-                percent = 100.0 * pv / sum_peaks
+            if total_activation_area > 0 and peak_areas.size > 0:
+                percent = 100.0 * peak_areas[i] / total_activation_area
             else:
                 percent = np.nan
 
@@ -355,19 +393,19 @@ def collect_data(duration, output_path):
     ax3.set_ylabel('Ativação', fontsize=22)
     ax3.tick_params(axis='both', labelsize=18)
 
-    ax4.plot(tempo, envoltorio, color='red', linewidth=1)
+    ax4.plot(tempo, envoltorio, color='red', linewidth=1.5)
     ax4.set_title('Envoltório Linear (Passa-baixa 5 Hz)', fontsize=26)
     ax4.set_xlabel('Tempo (s)', fontsize=20)
     ax4.set_ylabel('Ativação', fontsize=20)
     ax4.grid(True)
 
-    ax5.plot(tempo_rms, rms, color='purple', linewidth=1)
+    ax5.plot(tempo_rms, rms, color='purple', linewidth=1.5)
     ax5.set_title('RMS Deslizante (Janela 250 ms)', fontsize=26)
     ax5.set_xlabel('Tempo (s)', fontsize=20)
     ax5.set_ylabel('RMS', fontsize=20)
     ax5.grid(True)
 
-    ax6.plot(fft_freqs, magnitude, color='orange', linewidth=1)
+    ax6.plot(fft_freqs, magnitude, color='orange', linewidth=1.5)
     ax6.set_title('Transformada Rápida de Fourier (FFT)', fontsize=26)
     ax6.set_xlabel('Frequência (Hz)', fontsize=20)
     ax6.set_ylabel('Magnitude', fontsize=20)
@@ -401,8 +439,10 @@ def collect_data(duration, output_path):
 
 
     plt.tight_layout()
-    plot_file = "../dados_e_videos/emg_plot.png"
-    plt.savefig(plot_file, dpi=80)
+    plot_file_png = "../dados_e_videos/emg_plot.png"
+    plt.savefig(plot_file_png, dpi=80)
+    plot_file_pdf = "../dados_e_videos/emg_plot.pdf"
+    plt.savefig(plot_file_pdf, dpi=80)
     plt.close()
 
 
