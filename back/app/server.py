@@ -1,11 +1,14 @@
 # Servidor
-from fastapi import FastAPI, Response, HTTPException, Request, UploadFile, File, Form, BackgroundTasks
+from fastapi import FastAPI, Response, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi import FastAPI
 # Gerenciamento de diretorio
 from pathlib import Path
 # Banco de dados
 import psycopg2
+from ..database.db_config import Base, engine
+from ..database import models
 # Para rodar os outros codigos
 import subprocess
 # Para timestamps
@@ -35,6 +38,12 @@ def index_html():
 @app.get("/paciente.html")
 def paciente_html():
     return FileResponse(FRONT_DIR / "paciente.html")
+
+@app.on_event("startup")
+def startup_event():
+    print("🔧 Criando tabelas (se não existirem)...")
+    Base.metadata.create_all(bind=engine)
+
 
 
 # Configuração do banco
