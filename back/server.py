@@ -12,16 +12,13 @@ import subprocess
 from datetime import datetime
 # Adicionais
 import socket, json, glob, time, os, serial
-# Adicionais para usar no celular
-import asyncio
-import mimetypes
 
 
 app = FastAPI()
 
-# Caminhos base (diretório onde este arquivo back.py está)
+# Caminhos base (diretório onde este arquivo servidor está)
 BASE_DIR = Path(__file__).resolve().parent
-FRONT_DIR = BASE_DIR.parent / "front"
+FRONT_DIR = BASE_DIR.parent.parent / "front"
 
 # serve arquivos estáticos em /static
 app.mount("/static", StaticFiles(directory=str(FRONT_DIR), html=True), name="static")
@@ -42,19 +39,18 @@ def paciente_html():
 
 # Configuração do banco
 DB_CONFIG = {
-    "dbname": "projetoemg",
-    "user": "nicolas",
-    "password": "1921",
-    "host": "localhost",
-    "port": "5432"
+    "dbname": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "host": os.getenv("DB_HOST"),
+    "port": os.getenv("DB_PORT")
 }
-
 # Executa scripts externos (usa caminhos absolutos)
 def run_scripts(rodar_dados=True, rodar_video=True, tempo_execucao=20):
     try:
         server_dir = BASE_DIR
-        script1 = server_dir / "Server_coletor.py"   # dados
-        script2 = server_dir / "teste_viscomp.py"    # vídeo
+        script1 = server_dir / "emg_code.py"   # dados
+        script2 = server_dir / "comp_vision.py"    # vídeo
 
         videos_dir = server_dir.parent / "dados_e_videos"
         import re
