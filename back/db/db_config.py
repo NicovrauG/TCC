@@ -3,11 +3,11 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
 DATABASE_URL = os.environ.get("DATABASE_URL") or (
-    f"postgresql://{os.environ.get('DB_USER','user_emg')}:"
-    f"{os.environ.get('DB_PASSWORD','senha_emg')}@"
+    f"postgresql://{os.environ.get('DB_USER','emg_user')}:"
+    f"{os.environ.get('DB_PASSWORD','emg')}@"
     f"{os.environ.get('DB_HOST','db')}:"
     f"{os.environ.get('DB_PORT','5432')}/"
-    f"{os.environ.get('DB_NAME','eletromiografia')}"
+    f"{os.environ.get('DB_NAME','projetoemg')}"
 )
 
 # Engine e session factory
