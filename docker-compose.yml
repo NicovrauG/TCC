@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: emg_user
       POSTGRES_PASSWORD: emg
-      POSTGRES_DB: projeto_emg
+      POSTGRES_DB: projetoemg
     ports:
       - "5433:5432"
     volumes:
@@ -30,11 +30,17 @@ services:
       DB_PASSWORD: emg
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: projeto_emg
+      DB_NAME: projetoemg
     depends_on:
       - db
       - mqtt
+    devices:
+      - "/dev/video0:/dev/video0"
+    privileged: true  
+    volumes:
+      - dados_e_videos:/app/dados_e_videos
     restart: always
 
 volumes:
   db_data:
+  dados_e_videos:
