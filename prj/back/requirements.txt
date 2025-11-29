@@ -3,3 +3,11 @@ uvicorn[standard]
 psycopg2-binary
 paho-mqtt
 pyserial
+pandas
+numpy
+matplotlib
+scipy
+opencv-python
+mediapipe
+av
+opencv-python-headless
