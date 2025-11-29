@@ -107,6 +107,7 @@ Espera-se que o protótipo sirva como uma ferramenta auxiliar acessível para fi
 
 Todo e qualquer teste seguiu o padrão SENIAM.
 Para o relatório seguinte, o sensor foi posicionado sobre o bíceps braquial, conforme a recomendação.
+
 ![posicao_sensor](imgs/seniam_biceps.gif)
 
 Outros referenciais podem ser encontrados em: https://www.seniam.org/
