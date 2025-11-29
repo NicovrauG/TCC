@@ -84,7 +84,7 @@ O desenvolvimento segue etapas iterativas:
 
 ## Esquemático da montagem
 
-(imgs/esquematico.png)
+![Esquemático do protótipo](imgs/esquematico.png)
 
 ## Testes
 
