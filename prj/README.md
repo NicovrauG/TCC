@@ -1,4 +1,4 @@
 # Esse diretório é onde os códigos do protótipo são encontrados.
- - `prj/esp_code/` — firmware e configurações para o microcontrolador.
- - `prj/back/` — servidor e scripts para processamento.
- - `prj/front/` — páginas web para visualização.
+ - `esp_code/` — firmware e configurações para o microcontrolador.
+ - `back/` — servidor e scripts para processamento.
+ - `front/` — páginas web para visualização.
