@@ -1,6 +1,6 @@
 # ADS1115 — Conversor Analógico-Digital (ADC) de Alta Resolução
 
-![Ilustrativo_ads1115](../../imgs/ADS1115.jpg)
+![Ilustrativo_ads1115](../../../imgs/ADS1115.jpg)
 
 ## Visão Geral
 
