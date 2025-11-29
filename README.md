@@ -2,7 +2,7 @@
 
 ## Introdução
 
-Este repositório contém o Trabalho de Conclusão de Curso (TCC) desenvolvido no curso de Engenharia da Computação por Nicolas Sanson Giaboeski. O projeto propõe um protótipo que integra leituras de um sensor de eletromiografia de superfície com técnicas de visão computacional (BlazePose) para apoiar decisões clínicas na reabilitação de pacientes.
+Este repositório contém o Trabalho de Conclusão de Curso (TCC) desenvolvido no curso de Engenharia da Computação por Nicolas Sanson Giaboeski. O projeto propõe o desenvolvimento de um protótipo que integra leituras de um sensor de eletromiografia de superfície com técnicas de visão computacional (BlazePose) para apoiar decisões clínicas na reabilitação de pacientes.
 
 ## Descrição
 
