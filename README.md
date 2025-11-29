@@ -47,7 +47,7 @@ O protótipo visa permitir treinamentos guiados, avaliações quantitativas de a
 - Firmware: C/C++ (PlatformIO/Arduino)
 - Backend: Python (FastAPI)
 - Visão Computacional: BlazePose (MediaPipe) integrado no módulo de processamento
-- Frontend: HTML/CSS/JavaScript (pasta `front`)
+- Frontend: HTML/CSS/JavaScript
 - Banco de dados: PostgreSQL
 
 ## Requisitos
