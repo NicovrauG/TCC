@@ -117,7 +117,7 @@ Toda a documentação e códigos encontram-se organizados nas pastas principais:
 2 - Clone os diretórios `prj/back/` e `prj/front/`.
 3 - Em um terminal, acesse o diretório que você clonou os diretórios citados acima.
 4 - Instale os pacotes necessários listados em `prj/back/requirements.txt`.
-5 - Rode o servidor da aplicação web com o comando ```uvicorn server:app --host 0.0.0.0 --port 8000
+5 - Rode o servidor da aplicação web com o comando ```uvicorn server:app --host 0.0.0.0 --port 8000```
 6 - Acesse a aplicação no seu navegador (127.0.0.1:8000)
 7 - Com o ESP32 conectado no seu computador, aperte o botão "Configurar Aparelho" e preencha os campos de ssid e senha da rede Wi-Fi que será utilizada. Após isso, clique no botão de Reset do ESP e logo em seguida no botão de configurar na interface.
 8 - Cadastre um paciente preenchendo os campos necessários e acesse o perfil desse paciente.
