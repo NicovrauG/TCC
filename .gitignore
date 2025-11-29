@@ -2,31 +2,3 @@
 back/
 ESP_Code/
 docker-compose.yml
-
-# Ambiente virtual
-venv/
-env/
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-
-# Distribuição / build
-build/
-dist/
-*.egg-info/
-
-# Editor / IDE
-.vscode/
-.idea/
-
-# Sistema
-.DS_Store
-
-# Banco de dados local
-*.sqlite3
-back/
-ESP_Code/
-docker-compose.yml
