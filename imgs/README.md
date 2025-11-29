@@ -1,1 +1,1 @@
-##Essa pasta é dedicada para armazenar todas as imagens presentes neste repositório.
+##Essa pasta é dedicada para o armazenamento de todas as imagens presentes neste repositório.
