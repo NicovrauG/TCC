@@ -4,7 +4,3 @@
   - Captura dos dados vindos do sensor EMG + Conversor ADS1115 na comunicação I2C
   - Envio dos dados para o broker MQTT conforme as configurações recebidas
  -  `platformio.ini` — Arquivo de configurações para o PlatformIO.
-
-## Portas do ESP32 - Modelo YD-ESP32-23
-
-!(imgs/esp32.jpg)
