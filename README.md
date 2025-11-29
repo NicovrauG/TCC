@@ -105,7 +105,7 @@ Espera-se que o protótipo sirva como uma ferramenta auxiliar acessível para fi
 
 ## Exemplo de relatório gerado
 
-![Exemplo de relatório](imgs/exemplo_relatorio.jpg)
+![Exemplo de relatório](imgs/exemplo_relatorio.png)
 
 ## Documentação
 
