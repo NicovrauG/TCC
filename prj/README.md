@@ -2,3 +2,4 @@
  - `esp_code/` — firmware e configurações para o microcontrolador.
  - `back/` — servidor e scripts para processamento.
  - `front/` — páginas web para visualização.
+ - `hardware/` — informações técnicas sobre os componentes utilizados.
