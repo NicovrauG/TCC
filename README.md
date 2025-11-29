@@ -114,7 +114,7 @@ Toda a documentação e códigos encontram-se organizados nas pastas principais:
 - `prj/esp_code/` — firmware e esquemáticos do protótipo.
 - `prj/back/` — servidor e processamento.
 - `prj/front/` — páginas web para visualização.
-
+- `prj/hardware/` — informações técnicas sobre os componentes utilizados.
 ## Como Executar (Em adaptação)
 
 1 - O primeiro passo é copiar o código e configurações presentes em `prj/esp_code/` e realizar upload para o ESP32. (Mudanças nas configurações podem ser necessárias, visto que o modelo de ESP utilizado não é comum)
