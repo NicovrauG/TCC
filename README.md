@@ -103,7 +103,7 @@ O desenvolvimento segue etapas iterativas:
 
 Espera-se que o protótipo sirva como uma ferramenta auxiliar acessível para fisioterapeutas, reduzindo custos de avaliação e fornecendo dados quantitativos que complementem técnicas tradicionais.
 
-## Exemplo de relatório gerado
+## Exemplo de Relatório Gerado
 
 ![Exemplo de relatório](imgs/exemplo_relatorio.png)
 
