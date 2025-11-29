@@ -61,7 +61,6 @@ bool loadConfig() {
     return false;
   }
 
-  // aceitar duas formas de chaves: wifi_ssid/wifi_password/wifi_broker_ip ou ssid/password/broker_ip
   bool hasNew = doc.containsKey("wifi_ssid") || doc.containsKey("wifi_password") || doc.containsKey("wifi_broker_ip");
   bool hasOld = doc.containsKey("ssid") || doc.containsKey("password") || doc.containsKey("broker_ip");
   if (!hasNew && !hasOld) {
@@ -69,7 +68,6 @@ bool loadConfig() {
     return false;
   }
 
-  // pega valor preferindo a forma wifi_*, se existir, caso contrário pega ssid/password/broker_ip
   if (doc.containsKey("wifi_ssid")) config.ssid = doc["wifi_ssid"].as<String>();
   else if (doc.containsKey("ssid")) config.ssid = doc["ssid"].as<String>();
   else config.ssid = "";
@@ -88,7 +86,7 @@ bool loadConfig() {
 
   return true;
 }
-// ...existing code...
+
 void saveConfig(const String &jsonStr) {
   Serial.print("JSON recebido via Serial: ");
   Serial.println(jsonStr);
@@ -101,7 +99,6 @@ void saveConfig(const String &jsonStr) {
     return;
   }
 
-  // normalizar: ao salvar, escrever usando as chaves wifi_*
   DynamicJsonDocument outDoc(512);
   if (doc.containsKey("wifi_ssid")) outDoc["wifi_ssid"] = doc["wifi_ssid"].as<const char*>();
   else if (doc.containsKey("ssid")) outDoc["wifi_ssid"] = doc["ssid"].as<const char*>();
@@ -121,7 +118,6 @@ void saveConfig(const String &jsonStr) {
   serializeJson(outDoc, file);
   file.close();
 
-  // lê o que foi salvo e mostra
   File f2 = LittleFS.open(CONFIG_FILE, "r");
   if (f2) {
     String saved = "";
@@ -199,12 +195,10 @@ void setup() {
   delay(2000); // espera a USB estabilizar
   Serial.println("\nIniciando sistema...");
 
-  // tenta montar LittleFS (uma vez)
   if (!LittleFS.begin(true, "/littlefs")) {
     Serial.println("Erro ao montar LittleFS");
   }
 
-  // tenta carregar config; se não encontrar, fica aguardando JSON via Serial
   if (!loadConfig()) {
     Serial.println("Nenhuma config em LittleFS. Aguardando configuração via Serial (envie JSON por linha)...");
     while (!loadConfig()) {
@@ -221,7 +215,6 @@ void setup() {
     }
   }
 
-  // aqui a config foi carregada -> inicializa wifi e MQTT
   Serial.print("Config carregada: ");
   Serial.println(config.ssid);
 
@@ -230,7 +223,6 @@ void setup() {
   client.setServer(config.broker_ip.c_str(), mqtt_port);
   client.setCallback(callback);
 
-  // inicia ADS1115
   Wire.begin();
   Wire.setClock(400000);
   ADS.begin();
