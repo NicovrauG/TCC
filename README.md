@@ -56,7 +56,7 @@ O protótipo visa permitir treinamentos guiados, avaliações quantitativas de a
 
 - `Python` recomendado: versão 3.11 para suporte do MediaPipe
 - `pip` para instalar dependências Python
-- `PlatformIO` ou `Arduino IDE` para compilar/flash do `ESP32` (pasta `ESP_Code`)
+- `PlatformIO` ou `Arduino IDE` para compilar/flash do `ESP32` (pasta `prj/esp_code`)
 
 
 ## Requisitos Funcionais
@@ -82,6 +82,10 @@ O desenvolvimento segue etapas iterativas:
 5. Criação do frontend para visualização e testes com usuários.
 6. Ajustes e ensaios em clínicas.
 
+## Esquemático da montagem
+
+(imgs/esquematico.png)
+
 ## Testes
 
 - Testes de unidade para funções de processamento de sinal.
@@ -103,9 +107,9 @@ Espera-se que o protótipo sirva como uma ferramenta auxiliar acessível para fi
 
 Toda a documentação e códigos encontram-se organizados nas pastas principais:
 
-- `prj/ESP_Code/` — firmware e esquemáticos do protótipo.
+- `prj/esp_code/` — firmware e esquemáticos do protótipo.
 - `prj/back/` — servidor e processamento.
 - `prj/front/` — páginas web para visualização.
 
-## Como Executar (rápido)
+## Como Executar
 
