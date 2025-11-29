@@ -103,7 +103,7 @@ O desenvolvimento segue etapas iterativas:
 
 Espera-se que o protótipo sirva como uma ferramenta auxiliar acessível para fisioterapeutas, reduzindo custos de avaliação e fornecendo dados quantitativos que complementem técnicas tradicionais.
 
-## Exemplo de posicionamento do sensor de eletromiografia de superfície
+## Exemplo de Posicionamento do Sensor de Eletromiografia de Superfície
 
 Todo e qualquer teste seguiu o padrão SENIAM.
 Para o relatório seguinte, o sensor foi posicionado sobre o bíceps braquial, conforme a recomendação.
