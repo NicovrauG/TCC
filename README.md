@@ -49,6 +49,7 @@ O protótipo visa permitir treinamentos guiados, avaliações quantitativas de a
 - Visão Computacional: BlazePose (MediaPipe) integrado no módulo de processamento
 - Frontend: HTML/CSS/JavaScript
 - Banco de dados: PostgreSQL
+- Comunicação Wi-Fi: Broker MQTT (Mosquitto)
 
 ## Requisitos
 
