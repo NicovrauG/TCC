@@ -7,14 +7,14 @@
 
 #define CONFIG_FILE "/config.json"
 
-// =============== CONFIGURAÇÃO ADS1115 =================
+// ADS1115 object
 ADS1115 ADS(0x48);
 
-// =============== MQTT =================
+// MQTT client setup
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-// =============== VARIÁVEIS GLOBAIS =================
+// MQTT broker port
 int mqtt_port = 1883;
 
 struct Config {
@@ -33,7 +33,7 @@ void callback(char* topic, byte* payload, unsigned int length);
 void setup_wifi();
 void reconnect();
 
-
+// Carrega configuração do LittleFS
 bool loadConfig() {
   if (!LittleFS.begin(true, "/littlefs")) {
     Serial.println("Erro ao montar LittleFS");
@@ -61,6 +61,7 @@ bool loadConfig() {
     return false;
   }
 
+  // verifica se tem as chaves esperadas
   bool hasNew = doc.containsKey("wifi_ssid") || doc.containsKey("wifi_password") || doc.containsKey("wifi_broker_ip");
   bool hasOld = doc.containsKey("ssid") || doc.containsKey("password") || doc.containsKey("broker_ip");
   if (!hasNew && !hasOld) {
@@ -68,6 +69,7 @@ bool loadConfig() {
     return false;
   }
 
+  // pega valor preferindo a forma wifi_*, se existir, caso contrário pega ssid/password/broker_ip
   if (doc.containsKey("wifi_ssid")) config.ssid = doc["wifi_ssid"].as<String>();
   else if (doc.containsKey("ssid")) config.ssid = doc["ssid"].as<String>();
   else config.ssid = "";
@@ -87,6 +89,7 @@ bool loadConfig() {
   return true;
 }
 
+// Salva configuração no LittleFS
 void saveConfig(const String &jsonStr) {
   Serial.print("JSON recebido via Serial: ");
   Serial.println(jsonStr);
@@ -99,6 +102,7 @@ void saveConfig(const String &jsonStr) {
     return;
   }
 
+  // normalizar: ao salvar, escrever usando as chaves wifi_*
   DynamicJsonDocument outDoc(512);
   if (doc.containsKey("wifi_ssid")) outDoc["wifi_ssid"] = doc["wifi_ssid"].as<const char*>();
   else if (doc.containsKey("ssid")) outDoc["wifi_ssid"] = doc["ssid"].as<const char*>();
@@ -118,6 +122,7 @@ void saveConfig(const String &jsonStr) {
   serializeJson(outDoc, file);
   file.close();
 
+  // lê o que foi salvo e mostra
   File f2 = LittleFS.open(CONFIG_FILE, "r");
   if (f2) {
     String saved = "";
@@ -132,7 +137,7 @@ void saveConfig(const String &jsonStr) {
   ESP.restart();
 }
 
-// =============== CALLBACK MQTT =================
+// Callback MQTT
 void callback(char* topic, byte* payload, unsigned int length) {
   String msg = "";
   for (unsigned int i = 0; i < length; i++) msg += (char)payload[i];
@@ -142,7 +147,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println(msg);
 }
 
-// =============== WIFI =================
+// Configura WiFi
 void setup_wifi() {
   Serial.print("Conectando ao WiFi ");
   Serial.println(config.ssid);
@@ -162,7 +167,7 @@ void setup_wifi() {
   }
 }
 
-// =============== MQTT =================
+// Reconecta ao broker MQTT
 void reconnect() {
   while (!client.connected()) {
     Serial.print("Tentando conectar ao broker MQTT...");
@@ -189,16 +194,18 @@ void reconnect() {
   
 }
 
-// =============== SETUP =================
+// Setup
 void setup() {
   Serial.begin(460800);
   delay(2000); // espera a USB estabilizar
   Serial.println("\nIniciando sistema...");
 
+  // tenta montar LittleFS (uma vez)
   if (!LittleFS.begin(true, "/littlefs")) {
     Serial.println("Erro ao montar LittleFS");
   }
 
+  // tenta carregar config; se não encontrar, fica aguardando JSON via Serial
   if (!loadConfig()) {
     Serial.println("Nenhuma config em LittleFS. Aguardando configuração via Serial (envie JSON por linha)...");
     while (!loadConfig()) {
@@ -220,9 +227,11 @@ void setup() {
 
   setup_wifi();
 
+  // configura MQTT
   client.setServer(config.broker_ip.c_str(), mqtt_port);
   client.setCallback(callback);
 
+  // inicia ADS1115
   Wire.begin();
   Wire.setClock(400000);
   ADS.begin();
@@ -233,8 +242,9 @@ void setup() {
   Serial.println("Sistema iniciado!");
 }
 
-// =============== LOOP =================
+// Loop principal
 void loop() {
+  // Verifica se há configuração nova via Serial
   if (Serial.available()) {
     String jsonStr = Serial.readStringUntil('\n');
     jsonStr.trim();
@@ -250,11 +260,13 @@ void loop() {
   }
   client.loop();
   
+  // Lê valor do ADS1115
   ADS.setGain(0);
   int16_t val_0 = ADS.getValue();
   float f = ADS.toVoltage(1);
   float emg_value = val_0 * f * 1000.0; // mV
 
+  // Publica valor no MQTT
   char msg[50];
   snprintf(msg, 50, "%.3f", emg_value);
   if(client.connected()) {
