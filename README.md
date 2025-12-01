@@ -58,7 +58,8 @@ O protótipo visa permitir treinamentos guiados, avaliações quantitativas de a
 - `Python` recomendado: versão 3.11 para suporte do MediaPipe
 - `pip` para instalar dependências Python
 - `PlatformIO` ou `Arduino IDE` para compilar/flash do `ESP32` (pasta `prj/esp_code`)
-
+- `PostgreSQL` para armazenamento dos dados
+- `Mosquitto` para realizar comunicação via Broker MQTT (Wi-Fi)
 
 ## Requisitos Funcionais
 
