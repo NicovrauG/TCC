@@ -43,11 +43,11 @@ O protótipo visa permitir treinamentos guiados, avaliações quantitativas de a
 
 ## Tecnologias Utilizadas
 
-- Hardware: ESP32 (YD-ESP32-23), conversor AD (ADS1115), sensor EMG de superfície (Sen0240)
+- [Hardware](./prj/hardware/): ESP32 (YD-ESP32-23), conversor AD (ADS1115), sensor EMG de superfície (Sen0240)
 - Firmware: C/C++ (PlatformIO/Arduino)
-- Backend: Python (FastAPI)
+- [Backend](./prj/back): Python (FastAPI)
 - Visão Computacional: BlazePose (MediaPipe) integrado no módulo de processamento
-- Frontend: HTML/CSS/JavaScript
+- [Frontend](./prj/front): HTML/CSS/JavaScript
 - Banco de dados: PostgreSQL
 - Comunicação Wi-Fi: Broker MQTT (Mosquitto)
 
