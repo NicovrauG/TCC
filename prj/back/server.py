@@ -54,7 +54,9 @@ DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
     "port": os.getenv("DB_PORT")
 }
-# Executa scripts externos (usa caminhos absolutos)
+
+
+# Executa scripts externos (emg_code e comp_vision)
 def run_scripts(rodar_dados=True, rodar_video=True, tempo_execucao=20):
     try:
         server_dir = BASE_DIR
@@ -105,7 +107,6 @@ def run_scripts(rodar_dados=True, rodar_video=True, tempo_execucao=20):
                 raise FileNotFoundError(f"{plot_file_png} não encontrado")
             # pdf é o relatorio que será salvo no banco (pode ser opcional)
             if not plot_file_pdf.exists():
-                # não falha necessariamente — ajustar conforme necessidade
                 plot_pdf_data = None
             else:
                 with open(plot_file_pdf, "rb") as f:
@@ -124,6 +125,7 @@ def run_scripts(rodar_dados=True, rodar_video=True, tempo_execucao=20):
     except Exception as e:
         raise
 
+# utilitário para obter IP local
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -151,9 +153,8 @@ def _to_bytes(raw):
         raise HTTPException(status_code=500, detail="Formato de dados no banco inesperado")
 
 
-
 @app.post("/pacientes")
-async def criar_paciente(request: Request):
+async def criar_paciente(request: Request): # cria paciente
     body = await request.json()
     nome = body.get("nome")
     if not nome:
@@ -179,10 +180,7 @@ async def criar_paciente(request: Request):
 
 
 @app.get("/pacientes")
-def listar_pacientes():
-    """
-    Retorna lista de pacientes registrados.
-    """
+def listar_pacientes(): # lista pacientes
     conn = psycopg2.connect(**DB_CONFIG)
     try:
         cur = conn.cursor()
@@ -205,14 +203,9 @@ def listar_pacientes():
     return pacientes
 
 
-# ------------------ Coletas (por paciente) ------------------
 
 @app.get("/pacientes/{paciente_id}/coletas")
-def listar_coletas_paciente(paciente_id: int):
-    """
-    Lista as coletas de um paciente específico.
-    Retorna: [{id, data}, ...]
-    """
+def listar_coletas_paciente(paciente_id: int): # lista coletas de um paciente
     conn = psycopg2.connect(**DB_CONFIG)
     try:
         cur = conn.cursor()
@@ -236,13 +229,9 @@ def listar_coletas_paciente(paciente_id: int):
     return coletas
 
 
-# Endpoint para iniciar coleta - **exige** paciente_id
+
 @app.post("/start")
-async def start_coleta(request: Request):
-    """
-    Inicia a coleta associada a um paciente já cadastrado.
-    Espera JSON: { "paciente_id": <int>, "rodar_dados": true/false, "rodar_video": true/false }
-    """
+async def start_coleta(request: Request): # inicia coleta associada a um paciente
     body = await request.json()
     tempo_execucao = body.get("tempo_execucao", 20)
     paciente_id = body.get("paciente_id")
@@ -279,9 +268,6 @@ async def start_coleta(request: Request):
     return {"message": "Coleta armazenada com sucesso", "id": coleta_id}
 
 
-
-# ------------------ Recuperação de arquivos da coleta ------------------
-
 @app.get("/csv/{coleta_id}")
 def get_csv_json(coleta_id: int):
     conn = psycopg2.connect(**DB_CONFIG)
@@ -300,7 +286,6 @@ def get_csv_json(coleta_id: int):
     return Response(content=csv_bytes, media_type="text/csv",
                     headers={"Content-Disposition": f'attachment; filename="coleta_{coleta_id}.csv"'})
 
-# ENDPOINT PARA O PNG
 
 @app.get("/grafico/{coleta_id}")
 def get_grafico(coleta_id: int):
@@ -317,7 +302,6 @@ def get_grafico(coleta_id: int):
     plot_bytes = _to_bytes(row[0])
     return Response(content=plot_bytes, media_type="image/png")
 
-# ENDPOINT PARA O PDF
 
 @app.get("/relatorio/{coleta_id}")
 def get_relatorio(coleta_id: int):
@@ -337,7 +321,7 @@ def get_relatorio(coleta_id: int):
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="relatorio_{coleta_id}.pdf"'})
 
-# Endpoint para exibir vídeo
+
 @app.get("/video/{coleta_id}")
 def get_video(coleta_id: int):
     conn = psycopg2.connect(**DB_CONFIG)
@@ -371,23 +355,15 @@ def get_video(coleta_id: int):
 
     return FileResponse(str(video_path), media_type=media_type)
 
+
+
+
 # ------------------ Configuração do aparelho ------------------
 
 CONFIG_PATH = BASE_DIR / "config.json"
 
 
-def get_local_ip():
-    import socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = "127.0.0.1"
-    finally:
-        s.close()
-    return ip
-
+# utilitário para encontrar a porta serial mais recente do ESP
 def find_latest_esp_port():
     ports = glob.glob("/dev/ttyACM*")
     if not ports:
@@ -395,8 +371,9 @@ def find_latest_esp_port():
     ports.sort(key=os.path.getctime, reverse=True)
     return ports[0]
 
+
+# envia JSON de configuração via Serial para o ESP
 def send_config_to_esp(config_data, retries=5):
-    """Envia JSON de configuração via Serial para o ESP."""
     config = {
         "ssid": config_data["wifi_ssid"],
         "password": config_data["wifi_password"],
