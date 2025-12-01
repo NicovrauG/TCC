@@ -31,7 +31,7 @@
   <header>
     <h1>Perfis</h1>
   </header>
-
+  
   <main>
     <div>
       <button onclick="abrirModalCadastro()">Cadastrar novo</button>
@@ -93,7 +93,7 @@
     }
     function fecharModalColeta() { document.getElementById("modalColeta").style.display = "none"; }
 
-    let todosPacientes = []; // guarda a lista completa
+    let todosPacientes = []; // Guarda a lista completa de pacientes.
 
     function renderizarPacientes(lista) {
       const container = document.getElementById("listaPacientes");
@@ -120,7 +120,7 @@
       });
     }
 
-    // Carrega lista de pacientes
+    // Carrega a lista de pacientes.
     async function carregarPacientes() {
       try {
         const res = await fetch("/pacientes");
@@ -149,7 +149,7 @@
       document.getElementById("p_genero").value = "";
     }
 
-    // Cria paciente (POST /pacientes)
+    // Cria paciente usando requisição POST.
     async function criarPaciente() {
       const nome = document.getElementById("p_nome").value;
       const idade = parseInt(document.getElementById("p_idade").value);
@@ -182,7 +182,7 @@
       }
     }
 
-
+    // Mostra o histórico de coletas de um paciente.
     async function mostrarPaciente(paciente_id) {
       const resultado = document.getElementById("resultado");
       resultado.innerHTML = "Carregando histórico do paciente...";
@@ -213,6 +213,7 @@
       }
     }
 
+    // Modal de configuração do aparelho
     function abrirModalConfig() {
       document.getElementById("modalConfig").style.display = "flex";
       atualizarIPBroker();
@@ -221,6 +222,7 @@
       document.getElementById("modalConfig").style.display = "none";
     }
 
+    // Atualiza o display do IP do broker no modal de configuração
     async function atualizarIPBroker() {
       const div = document.getElementById("ip_broker_display");
       div.innerText = "Detectando IP do broker...";
@@ -233,6 +235,7 @@
       }
     }
 
+    // Salva a configuração do aparelho via POST
     async function salvarConfig() {
       const wifi_ssid = document.getElementById("wifi_ssid").value;
       const wifi_password = document.getElementById("wifi_pass").value;
