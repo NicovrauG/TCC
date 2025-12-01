@@ -80,20 +80,20 @@
     }
 
     function abrirModalColeta() {
-        document.getElementById("modalColeta").style.display = "flex";
+      document.getElementById("modalColeta").style.display = "flex";
 
-        // resetar vídeo desligado
-        const videoCheck = document.getElementById("coletaVideo");
-        videoCheck.checked = false;
+      // Resetar o estado do checkbox de vídeo.
+      const videoCheck = document.getElementById("coletaVideo");
+      videoCheck.checked = false;
 
-        // resetar tipo = pc e desabilitar imediatamente
-        const tipoSelect = document.getElementById("tipoVideo");
-        tipoSelect.value = "pc";
-        tipoSelect.disabled = true;
-        tipoSelect.style.opacity = 0.4;
+      // Definir o tipo como pc e desabilitar o seletor.
+      const tipoSelect = document.getElementById("tipoVideo");
+      tipoSelect.value = "pc";
+      tipoSelect.disabled = true;
+      tipoSelect.style.opacity = 0.4;
 
-        // resetar dados EMG ligado
-        document.getElementById("coletaDados").checked = true;
+      // Ativar a coleta de dados EMG.
+      document.getElementById("coletaDados").checked = true;
     }
 
     function fecharModalColeta() { document.getElementById("modalColeta").style.display = "none"; }
@@ -102,26 +102,13 @@
       const select = document.getElementById("tipoVideo");
 
       if (this.checked) {
-        // habilita select
+        // Habilita o seletor de dispositivo.
         select.disabled = false;
         select.style.opacity = 1;
-
-        // se NÃO for celular, desabilita a opção mobile
-        if (!MOBILE_DETECT) {
-          document.querySelector("#tipoVideo option[value='mobile']").disabled = true;
-          select.value = "pc"; // força computador
-        } else {
-          document.querySelector("#tipoVideo option[value='mobile']").disabled = false;
-        }
-      } else {
-        // desabilita select e volta para PC
-        select.disabled = true;
-        select.style.opacity = 0.4;
-        select.value = "pc";
       }
     });
 
-
+    // Carrega os dados do paciente
     async function carregarPaciente() {
       const res = await fetch(`/pacientes`);
       const pacientes = await res.json();
@@ -140,6 +127,7 @@
       `;
     }
 
+    // Carrega as coletas do paciente
     async function carregarColetas() {
       const res = await fetch(`/pacientes/${pacienteId}/coletas`);
       const coletas = await res.json();
@@ -158,6 +146,7 @@
         `).join("");
     }
 
+    /*
     function decidirColeta() {
       const video = document.getElementById("coletaVideo").checked;
       const tipo = document.getElementById("tipoVideo").value;
@@ -167,10 +156,8 @@
         iniciarColeta();
       } else {
         // coleta mobile
-        iniciarColetaMobile();
       }
-    }
-
+    }*/
 
     async function iniciarColeta() {
         const rodar_dados = document.getElementById("coletaDados").checked;
@@ -223,25 +210,25 @@
 
 
     async function verColeta(id) {
-        // Verifica se o elemento da coleta já existe (para evitar duplicar)
+        // Verifica se o elemento da coleta já existe para evitar duplicacao
         const card = document.getElementById(`coleta-${id}`);
         if (!card) return;
 
-        // Se o conteúdo já estiver aberto, recolhe (toggle)
+        // Fecha o detalhe se ele ja estiver aberto.
         const existing = card.querySelector(".coleta-detalhe");
         if (existing) {
             existing.remove();
             return;
         }
 
-        // Mostra um "carregando" temporário dentro da coleta
+        // Exibe mensagem de carregamento temporaria dentro da coleta.
         const loading = document.createElement("div");
         loading.textContent = "Carregando coleta...";
         loading.style.color = "#777";
         card.appendChild(loading);
 
         try {
-            // monta a estrutura do vídeo + gráfico
+            // Monta a estrutura do vídeo e do gráfico.
             const html = `
             <div class="coleta-detalhe" style="margin-top:10px">
                 <h3>Vídeo</h3>
@@ -266,13 +253,13 @@
             </div>
             `;
 
-            // remove o "carregando"
+            // Remove a mensagem de carregamento.
             loading.remove();
 
-            // insere o HTML no card da coleta (sem apagar o resto)
+            // Insere o HTML no card da coleta sem remover o restante.
             card.insertAdjacentHTML("beforeend", html);
 
-            // adiciona controle de zoom individual por coleta
+            // Adiciona controle de zoom individual para a coleta.
             let currentScale = 1;
             const img = document.getElementById(`emgImg-${id}`);
 
@@ -302,7 +289,7 @@
     }
 
 
-
+    // Funções para baixar CSV e PDF
     async function baixarCsv(id) {
       const res = await fetch(`/csv/${id}`);
       if (!res.ok) {
@@ -320,6 +307,7 @@
       URL.revokeObjectURL(url);
     }
 
+    // Baixar PDF
     async function baixarPdf(id) {
       const res = await fetch(`/relatorio/${id}`);
       if (!res.ok) {
