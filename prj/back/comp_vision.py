@@ -16,6 +16,7 @@ if index_arg is not None:
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
 
+# Calcula o ângulo entre três pontos
 def calcular_angulo(a, b, c):
     a, b, c = np.array(a), np.array(b), np.array(c)
     ab = a - b
@@ -23,6 +24,7 @@ def calcular_angulo(a, b, c):
     angulo = np.arccos(np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb)))
     return np.degrees(angulo)
 
+# Configura caminhos de entrada e saída de arquivos
 input_path = f'../dados_e_videos/video_{name}.mp4'
 output_path = f'../dados_e_videos/video_{name}_h264.mp4'
 angles_path = Path(__file__).resolve().parent.parent / "dados_e_videos" / "video_angles.jsonl"
@@ -73,7 +75,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
         try:
             landmarks = results.pose_landmarks.landmark
 
-            #BICEPS DIREITO
+            # Bíceps Direito
             ombro_direito = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
                     landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y]
             cotovelo_direito = [landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].x,
@@ -81,7 +83,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             punho_direito = [landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].x,
                     landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].y]
 
-            #BICEPS ESQUERDO
+            # Bíceps Esquerdo
             ombro_esquerdo = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
                     landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y]
             cotovelo_esquerdo = [landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x,
@@ -89,13 +91,15 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             punho_esquerdo = [landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x,
                     landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y]
 
-            #angulo = calcular_angulo(ombro_esquerdo, cotovelo_esquerdo, punho_esquerdo)
+            # Calcula ângulo
             angulo = calcular_angulo(ombro_direito, cotovelo_direito, punho_direito)
 
+            # Exibe ângulo na tela
             cv2.putText(image, str(int(angulo)),
                         tuple(np.multiply(cotovelo_direito, [frame_width, frame_height]).astype(int)),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
             try:
+                # Salva ângulo em arquivo
                 entry = {"t": time.time(), "angle": float(angulo)}
                 angles_file.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 angles_file.flush()
@@ -120,6 +124,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
         if cv2.waitKey(10) & 0xFF == ord('q'):  # ainda pode sair com 'q'
             break
 
+# Libera recursos
 cap.release()
 out.release()
 angles_file.close()
@@ -129,6 +134,7 @@ elapsed = max(0.001, time.time() - inicio)
 actual_fps = frame_count / elapsed if elapsed > 0 else fps
 print(f"[INFO] frames={frame_count} elapsed={elapsed:.2f}s actual_fps={actual_fps:.2f}")
 
+# Transcodifica vídeo para H.264 usando ffmpeg (necessário para aparecer no navegador)
 try:
     subprocess.run([
         "ffmpeg", "-y", "-i", input_path,
