@@ -11,7 +11,7 @@ from scipy.signal import butter, filtfilt, find_peaks, peak_widths
 from pathlib import Path
 import json, os
 
-
+# Configurações gerais
 base_dir = Path(__file__).resolve().parent
 output_data = base_dir.parent / "dados_e_videos" / "emg_data.csv"
 output_graph = base_dir.parent / "dados_e_videos" / "emg_plot.png"
@@ -25,7 +25,7 @@ PORT = 1883
 data_buffer = []
 duration = int(sys.argv[1]) if len(sys.argv) > 1 else 10
 
-
+# Filtros digitais
 def filtro_passa_alta(dados, fs, fc, ordem=4):
     nyq = 0.5 * fs
     normal_fc = fc / nyq
@@ -45,6 +45,7 @@ def filtro_rejeita_banda(dados, fs, f1, f2, ordem=4):
     b, a = butter(ordem, [low, high], btype='bandstop')
     return filtfilt(b, a, dados)
 
+# MQTT callbacks
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
         print("Conectado ao broker!")
@@ -58,8 +59,8 @@ def on_message(client, userdata, msg):
     timestamp = time.time() - start_time
     data_buffer.append((timestamp, payload))
 
+# Função para aguardar arquivo existir
 def wait_for_file(path: Path, timeout: float = 5.0, poll: float = 0.2) -> bool:
-    """Aguarda até 'timeout' segundos pelo arquivo existir. Retorna True se apareceu."""
     waited = 0.0
     while waited < timeout:
         if path.exists():
@@ -68,6 +69,7 @@ def wait_for_file(path: Path, timeout: float = 5.0, poll: float = 0.2) -> bool:
         waited += poll
     return False
 
+# Função principal de coleta e análise
 def collect_data(duration, output_path):
     global data_buffer, start_time
     data_buffer = []
@@ -101,7 +103,7 @@ def collect_data(duration, output_path):
     print(f"[INFO] Frequência real estimada: {fs_real:.2f} Hz")
 
     fs = fs_real  # Hz
-    ordem = 4
+    ordem = 4 # ordem dos filtros
 
     # Frequências de corte
     fc_passa_alta = min(20, fs_real * 0.4)    # ainda segura
@@ -120,7 +122,7 @@ def collect_data(duration, output_path):
     # Tempo para gráfico
     tempo = np.arange(len(dados)) / fs
 
-    # --- Cálculo das métricas ---
+    # Cálculo das métricas
     pico = np.max(np.abs(dados_filtrados))
     media = np.mean(np.abs(dados_filtrados))
     integral = np.trapz(np.abs(dados_filtrados), dx=1/fs)
@@ -129,13 +131,11 @@ def collect_data(duration, output_path):
     # FFT para frequência média/mediana
     freqs = np.fft.rfftfreq(len(dados_filtrados), d=1/fs)
     espectro = np.abs(np.fft.rfft(dados_filtrados))**2
-    #freq_media = np.sum(freqs * espectro) / np.sum(espectro)
     cumsum = np.cumsum(espectro)
-    #freq_mediana = freqs[np.searchsorted(cumsum, cumsum[-1]/2)]
 
     dados_positivos = np.abs(dados_filtrados)
 
-    # --- Métricas dados positivos ---
+    # Métricas para dados positivos
     pico_pos = np.max(dados_positivos)
     media_pos = np.mean(dados_positivos)
     integral_pos = np.trapz(dados_positivos, dx=1/fs)
@@ -147,6 +147,7 @@ def collect_data(duration, output_path):
     fft_freqs = np.fft.rfftfreq(N, d=1/fs)
     magnitude = np.abs(fft_vals) / N  # normalização da amplitude
 
+    # Cálculo de frequência média e mediana
     def freq_media_e_mediana(dados, fs):
         freqs = np.fft.rfftfreq(len(dados), d=1/fs)
         espectro = np.abs(np.fft.rfft(dados))**2
@@ -161,10 +162,10 @@ def collect_data(duration, output_path):
     freq_media, freq_mediana = freq_media_e_mediana(dados_filtrados, fs)
     freq_media_pos, freq_mediana_pos = freq_media_e_mediana(dados_positivos, fs)
 
-    # --- Envoltório linear (passa-baixa de 5 Hz) ---
+    # Envoltório linear (passa-baixa de 5 Hz)
     envoltorio = filtro_passa_baixa(np.abs(dados_filtrados), fs, 5, ordem=4)
 
-    # --- RMS deslizante (janela de 250 ms) ---
+    # RMS deslizante (janela de 250 ms)
     janela = int(fs * 0.250)
     rms = np.sqrt(np.convolve(dados_filtrados**2, np.ones(janela)/janela, mode='valid'))
     tempo_rms = np.arange(len(rms)) / fs
@@ -179,7 +180,7 @@ def collect_data(duration, output_path):
     peak_times = tempo[peaks]  # tempo relativo em segundos
     peak_values = envoltorio[peaks]
 
-    # --- Calcula área de ativação para cada pico usando as bordas fornecidas por peak_widths ---
+    # Calcula área de ativação para cada pico usando as bordas fornecidas por peak_widths
     if peaks.size > 0:
         widths_res = peak_widths(envoltorio, peaks, rel_height=0.5)  # largura na metade da altura
         left_ips = widths_res[2]
@@ -201,7 +202,7 @@ def collect_data(duration, output_path):
     # área total de ativação do envoltório (denominador para cálculo de %)
     total_activation_area = np.trapz(envoltorio, dx=1/fs)
 
-    # --- Procura arquivos de ângulos gravados (JSONL) ---
+    # Procura arquivos de ângulos gravados (JSONL)
     angles_dir = base_dir.parent / "dados_e_videos"
     angle_files = list(angles_dir.glob("video_angles.jsonl"))
 
@@ -265,7 +266,7 @@ def collect_data(duration, output_path):
                 matched_angles_ts = np.array(ts_list) - start_abs
                 matched_angles_vals = np.array(val_list)
 
-        # --- Interpola ângulo nos tempos dos picos (se houver ângulos) ---
+        # Interpola ângulo nos tempos dos picos (se houver ângulos)
         if matched_angles_ts.size > 0 and peak_times.size > 0:
             order = np.argsort(matched_angles_ts)
             matched_angles_ts = matched_angles_ts[order]
@@ -292,7 +293,7 @@ def collect_data(duration, output_path):
         else:
             angles_at_peaks = np.full_like(peak_times, np.nan, dtype=float)
 
-    # --- Salva arquivo JSONL com picos e ângulos (opcional) ---
+    # Salva arquivo JSONL com picos e ângulos (opcional)
     peaks_out = angles_dir / f"emg_peaks_with_angles_{int(start_abs)}.jsonl"
     try:
         with open(peaks_out, "w", encoding="utf-8") as fh:
@@ -307,7 +308,7 @@ def collect_data(duration, output_path):
     except Exception:
         pass
 
-    # --- Plot em 3 partes ---
+    # Plot em 3 partes
     fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(
         7, 1, figsize=(duration, 30),
         gridspec_kw={'height_ratios': [3, 3, 3, 3, 3, 3, 2]}
@@ -393,18 +394,21 @@ def collect_data(duration, output_path):
     ax3.set_ylabel('Ativação', fontsize=22)
     ax3.tick_params(axis='both', labelsize=18)
 
+    # Gráfico 4 - Envoltório linear
     ax4.plot(tempo, envoltorio, color='red', linewidth=1.5)
     ax4.set_title('Envoltório Linear (Passa-baixa 5 Hz)', fontsize=26)
     ax4.set_xlabel('Tempo (s)', fontsize=20)
     ax4.set_ylabel('Ativação', fontsize=20)
     ax4.grid(True)
 
+    # Gráfico 5 - RMS deslizante
     ax5.plot(tempo_rms, rms, color='purple', linewidth=1.5)
     ax5.set_title('RMS Deslizante (Janela 250 ms)', fontsize=26)
     ax5.set_xlabel('Tempo (s)', fontsize=20)
     ax5.set_ylabel('RMS', fontsize=20)
     ax5.grid(True)
 
+    # Gráfico 6 - FFT
     ax6.plot(fft_freqs, magnitude, color='orange', linewidth=1.5)
     ax6.set_title('Transformada Rápida de Fourier (FFT)', fontsize=26)
     ax6.set_xlabel('Frequência (Hz)', fontsize=20)
