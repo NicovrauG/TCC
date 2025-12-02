@@ -51,6 +51,10 @@ O protótipo visa permitir treinamentos guiados, avaliações quantitativas de a
 - Banco de dados: PostgreSQL
 - Comunicação Wi-Fi: Broker MQTT (Mosquitto)
 
+### Esquemático do protótipo
+
+![Esquemático do protótipo](imgs/esquematico.png)
+
 ## Requisitos
 
 ### Requisitos de Ambiente
@@ -83,10 +87,7 @@ O desenvolvimento segue etapas iterativas:
 4. Integração do módulo de visão computacional (BlazePose).
 5. Criação do frontend para visualização e testes com usuários.
 6. Ajustes e ensaios em clínicas.
-
-## Esquemático da montagem
-
-![Esquemático do protótipo](imgs/esquematico.png)
+   
 
 ## Testes
 
